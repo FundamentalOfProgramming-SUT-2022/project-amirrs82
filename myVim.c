@@ -6,11 +6,182 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <string.h>
-char address[100], tempAddress[100], command[100];
+char address[100], tempAddress[100], command[100], text[100], number[10], *stringPtr, c;
+int i = 0, j = 0, line, end;
+bool quotation;
+FILE *myFile;
 
 void createFile();
 void insertStr()
 {
+    char address[100], tempAddress[100], command[100], temp[7], text[100], number[10], *stringPtr;
+    int i = 0, j = 0, line, end;
+    FILE *myFile;
+    scanf("%s", command);
+    getchar();
+    if (!strcmp(command, "--file"))
+    {
+        gets(address);
+    }
+    else
+    {
+        printf("Wrong Command! Please try again\n");
+        return;
+    }
+    if (address[0] == '/')
+    {
+        for (i; i < strlen(address); i++)
+        {
+            if (strstr(tempAddress, " --str"))
+            {
+                c = tempAddress[j - 6];
+                tempAddress[j - 6] = '\0';
+                break;
+            }
+            tempAddress[i] = address[i];
+
+            j++;
+        }
+        if (!access(tempAddress, F_OK))
+        {
+            myFile = fopen(tempAddress, "w");
+            tempAddress[j - 6] = c;
+            j = 0;
+            i++;
+            if (address[i] == '"')
+            {
+                quotation = true;
+                // i++;
+            }
+            else
+                quotation = false;
+            for (i; i < strlen(address); i++)
+            {
+                if (strstr(tempAddress, " --pos"))
+                {
+                    if (quotation)
+                        text[j - 7] = '\0';
+                    else
+                        text[j - 6] = '\0';
+                    break;
+                }
+                if (quotation)
+                {
+                    tempAddress[i - 1] = address[i + 1];
+                    text[j] = address[i + 1];
+                }
+                else
+                {
+                    tempAddress[i - 1] = address[i];
+                    text[j] = address[i];
+                    // tempAddress[i - 1] = address[i];
+                    // text[j] = address[i];
+                }
+
+                j++;
+            }
+            j = 0;
+            i++;
+            for (i; i < strlen(address); i++, j++)
+            {
+                if (address[i] == ':')
+                {
+                    i++;
+                    break;
+                }
+                number[j] = address[i];
+            }
+            number[j] = '\0';
+            j = 0;
+            line = strtod(number, &stringPtr);
+            for (i; i < strlen(address); i++, j++)
+            {
+                if (address[i] == '\0')
+                    break;
+                number[j] = address[i];
+            }
+            number[j] = '\0';
+            end = strtod(number, &stringPtr);
+            fclose(myFile);
+        }
+        else
+        {
+            printf("The file does not exist");
+            return;
+        }
+        i = 0;
+    }
+    else if (address[0] == '"')
+    {
+        i = 1;
+        for (i; i < strlen(address); i++)
+        {
+            if (address[i] == '"')
+            {
+                i++;
+                break;
+            }
+            tempAddress[i - 1] = address[i];
+        }
+        i -= 2;
+        tempAddress[i] = '\0';
+        for (i; i < strlen(address); i++)
+        {
+            if (strstr(tempAddress, " --str"))
+            {
+                break;
+            }
+            tempAddress[i] = address[i + 2];
+        }
+        if (!access(tempAddress, F_OK))
+        {
+            myFile = fopen(tempAddress, "w");
+        }
+        else
+        {
+            printf("The file does not exist");
+            return;
+        }
+        if (address[i] == '"')
+        {
+            quotation = true;
+            i++;
+        }
+        else
+            quotation = false;
+        for (i; i < strlen(address); i++)
+        {
+            if (strstr(tempAddress, " --pos"))
+            {
+                text[j - 7] = '\0';
+                break;
+            }
+            text[j] = address[i + 3];
+            tempAddress[i] = address[i + 2];
+            j++;
+        }
+        j = 0;
+        i++;
+        for (i; i < strlen(address); i++, j++)
+        {
+            if (address[i + 1] == ':')
+                break;
+            number[j] = address[i + 1];
+        }
+        number[j] = '\0';
+        j = 0;
+        line = strtod(number, &stringPtr);
+        for (i; i < strlen(address); i++, j++)
+        {
+            if (address[i + 2] == '\0')
+                break;
+            number[j] = address[i + 2];
+        }
+        number[j] = '\0';
+        j = 0;
+        end = strtod(number, &stringPtr);
+        fclose(myFile);
+    }
 }
 int main()
 {
@@ -28,10 +199,9 @@ int main()
 }
 void createFile()
 {
-    char address[100], tempAddress[100], command[100];
+    // char address[100], tempAddress[100], command[100];
     scanf("%s", command);
     getchar();
-    // char c = getchar();
     if (!strcmp(command, "--file"))
     {
         gets(address);
@@ -65,9 +235,9 @@ void createFile()
                 tempAddress[i] = address[i];
             }
             tempAddress[strlen(address)] = '\0';
-            FILE *myfile = fopen(tempAddress, "w");
+            myFile = fopen(tempAddress, "w");
             memset(tempAddress, 0, sizeof(tempAddress));
-            fclose(myfile);
+            fclose(myFile);
             return;
         }
         else
@@ -89,9 +259,9 @@ void createFile()
                 }
                 tempAddress[i] = address[i];
             }
-            FILE *myfile = fopen(tempAddress, "w");
+            myFile = fopen(tempAddress, "w");
             memset(tempAddress, 0, sizeof(tempAddress));
-            fclose(myfile);
+            fclose(myFile);
             return;
         }
         else

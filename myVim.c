@@ -18,12 +18,9 @@ int main()
     while ((strcmp(command, "exit")) && (strcmp(command, "quit")))
     {
         if (!strcmp(command, "createfile"))
-        {
-
             createFile();
-        }
-        // else if (!strcmp(command, "insertstr"))
-        //     insertstr();
+        else if (!strcmp(command, "insertstr"))
+            insertStr();
         else
             printf("Wrong Command! Please try again\n");
         scanf("%s", command);
@@ -34,19 +31,29 @@ void createFile()
     char address[100], tempAddress[100], command[100];
     scanf("%s", command);
     getchar();
-    char c = getchar();
-    if (c == '"')
+    // char c = getchar();
+    if (!strcmp(command, "--file"))
     {
-        if (!strcmp(command, "--file"))
-        {
-            gets(address);
-        }
-        else
-        {
-            printf("Wrong Command! Please try again\n");
-            return;
-        }
+        gets(address);
+    }
+    else
+    {
+        printf("Wrong Command! Please try again\n");
+        return;
+    }
+    if (address[0] == '"')
+    {
         address[strlen(address) - 1] = '\0';
+        for (size_t i = 0; i < strlen(address); i++)
+        {
+            if (i == strlen(address) - 1)
+            {
+                address[i] = '\0';
+                break;
+            }
+            address[i] = address[i + 1];
+        }
+
         if (access(address, F_OK))
         {
             for (size_t i = 0; i < strlen(address); i++)
@@ -69,27 +76,18 @@ void createFile()
             return;
         }
     }
-    else if (c == '/')
+    else if (address[0] == '/')
     {
-        if (!strcmp(command, "--file"))
-        {
-            gets(address);
-        }
-        else
-        {
-            printf("Wrong Command! Please try again\n");
-            return;
-        }
-        tempAddress[0] = c;
+        // tempAddress[0] = c;
         if (access(address, F_OK))
         {
-            for (size_t i = 1; i <= strlen(address); i++)
+            for (size_t i = 0; i <= strlen(address); i++)
             {
-                if (address[i-1] == '/')
+                if (address[i] == '/')
                 {
                     mkdir(tempAddress);
                 }
-                tempAddress[i] = address[i-1];
+                tempAddress[i] = address[i];
             }
             FILE *myfile = fopen(tempAddress, "w");
             memset(tempAddress, 0, sizeof(tempAddress));
@@ -102,5 +100,4 @@ void createFile()
             return;
         }
     }
-    // }
 }

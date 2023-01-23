@@ -19,6 +19,95 @@ FILE *myFile;
 //     arr[i] = '\0';
 // }
 void createFile();
+void insertStr();
+int main()
+{
+    scanf("%s", command);
+    while ((strcmp(command, "exit")) && (strcmp(command, "quit")))
+    {
+        if (!strcmp(command, "createfile"))
+            createFile();
+        else if (!strcmp(command, "insertstr"))
+        {
+            insertStr();
+        }
+        else
+            printf("Wrong Command! Please try again\n");
+        scanf("%s", command);
+    }
+}
+void createFile()
+{
+    scanf("%s", command);
+    getchar();
+    if (!strcmp(command, "--file"))
+    {
+        gets(address);
+    }
+    else
+    {
+        printf("Wrong Command! Please try again\n");
+        return;
+    }
+    if (address[0] == '"')
+    {
+        address[strlen(address) - 1] = '\0';
+        for (size_t i = 0; i < strlen(address); i++)
+        {
+            if (i == strlen(address) - 1)
+            {
+                address[i] = '\0';
+                break;
+            }
+            address[i] = address[i + 1];
+        }
+
+        if (access(address, F_OK))
+        {
+            for (size_t i = 0; i < strlen(address); i++)
+            {
+                if (address[i] == '/')
+                {
+                    mkdir(tempAddress);
+                }
+                tempAddress[i] = address[i];
+            }
+            tempAddress[strlen(address)] = '\0';
+            myFile = fopen(tempAddress, "w");
+            memset(tempAddress, 0, sizeof(tempAddress));
+            fclose(myFile);
+            return;
+        }
+        else
+        {
+            printf("The file already exists!\n");
+            return;
+        }
+    }
+    else if (address[0] == '/')
+    {
+        if (access(address, F_OK))
+        {
+            for (size_t i = 0; i <= strlen(address); i++)
+            {
+                if (address[i] == '/')
+                {
+                    mkdir(tempAddress);
+                }
+                tempAddress[i] = address[i];
+            }
+            myFile = fopen(tempAddress, "w");
+            memset(tempAddress, 0, sizeof(tempAddress));
+            fclose(myFile);
+            return;
+        }
+        else
+        {
+            printf("The file already exists!\n");
+            return;
+        }
+    }
+}
 void insertStr()
 {
     bool quotation;
@@ -310,92 +399,4 @@ void insertStr()
     memset(tempAddress, '\0', sizeof(tempAddress));
     memset(address, '\0', sizeof(address));
     memset(text, '\0', sizeof(text));
-}
-int main()
-{
-    scanf("%s", command);
-    while ((strcmp(command, "exit")) && (strcmp(command, "quit")))
-    {
-        if (!strcmp(command, "createfile"))
-            createFile();
-        else if (!strcmp(command, "insertstr"))
-        {
-            insertStr();
-        }
-        else
-            printf("Wrong Command! Please try again\n");
-        scanf("%s", command);
-    }
-}
-void createFile()
-{
-    scanf("%s", command);
-    getchar();
-    if (!strcmp(command, "--file"))
-    {
-        gets(address);
-    }
-    else
-    {
-        printf("Wrong Command! Please try again\n");
-        return;
-    }
-    if (address[0] == '"')
-    {
-        address[strlen(address) - 1] = '\0';
-        for (size_t i = 0; i < strlen(address); i++)
-        {
-            if (i == strlen(address) - 1)
-            {
-                address[i] = '\0';
-                break;
-            }
-            address[i] = address[i + 1];
-        }
-
-        if (access(address, F_OK))
-        {
-            for (size_t i = 0; i < strlen(address); i++)
-            {
-                if (address[i] == '/')
-                {
-                    mkdir(tempAddress);
-                }
-                tempAddress[i] = address[i];
-            }
-            tempAddress[strlen(address)] = '\0';
-            myFile = fopen(tempAddress, "w");
-            memset(tempAddress, 0, sizeof(tempAddress));
-            fclose(myFile);
-            return;
-        }
-        else
-        {
-            printf("The file already exists!\n");
-            return;
-        }
-    }
-    else if (address[0] == '/')
-    {
-        if (access(address, F_OK))
-        {
-            for (size_t i = 0; i <= strlen(address); i++)
-            {
-                if (address[i] == '/')
-                {
-                    mkdir(tempAddress);
-                }
-                tempAddress[i] = address[i];
-            }
-            myFile = fopen(tempAddress, "w");
-            memset(tempAddress, 0, sizeof(tempAddress));
-            fclose(myFile);
-            return;
-        }
-        else
-        {
-            printf("The file already exists!\n");
-            return;
-        }
-    }
 }

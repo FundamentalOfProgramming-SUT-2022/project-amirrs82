@@ -259,8 +259,8 @@ void insertStr()
             }
             if (currentLine == line)
             {
-                fputc('\n', myTempFile);
                 fputs(text, myTempFile);
+                fputc('\n', myTempFile);
             }
             fclose(myTempFile);
             fclose(myFile);
@@ -393,8 +393,40 @@ void insertStr()
                 }
             }
         }
-        fprintf(myFile, "%s", text);
+        int currentLine = 1;
+        while (true)
+        {
+            fgets(buffText, 1000, myFile);
+            if (feof(myFile))
+                break;
+            if (line == currentLine)
+            {
+                for (size_t i = 0; i < strlen(buffText); i++)
+                {
+                    if (i == position)
+                        fputs(text, myTempFile);
+                    fputc(buffText[i], myTempFile);
+                }
+                if (strlen(buffText) == position)
+                {
+                    fputs(text, myTempFile);
+                }
+            }
+            else
+            {
+                fputs(buffText, myTempFile);
+            }
+            currentLine++;
+        }
+        if (currentLine == line)
+        {
+            fputs(text, myTempFile);
+            fputc('\n', myTempFile);
+        }
+        fclose(myTempFile);
         fclose(myFile);
+        remove(temp);
+        rename(clipboard, temp);
     }
     memset(tempAddress, '\0', sizeof(tempAddress));
     memset(address, '\0', sizeof(address));

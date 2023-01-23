@@ -6,19 +6,25 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <string.h>
-char address[100], tempAddress[100], command[100], text[100], number[10], *stringPtr, c;
-int i = 0, j = 0, line, end;
-bool quotation;
+char address[100], tempAddress[100], command[100], text[1000], buffText[1000], temp[100], number[10], clipboard[100], *stringPtr, c;
+int i = 0, j = 0, line, position;
 bool quotation;
 FILE *myFile;
-
+// void shift(char arr[], int currentLocation)
+// {
+//     for (size_t i = currentLocation; i < strlen(arr); i++)
+//     {
+//         arr[i] = arr[i + 1];
+//     }
+//     arr[i] = '\0';
+// }
 void createFile();
 void insertStr()
 {
     bool quotation;
-    char address[100], tempAddress[100], command[100], temp[7], text[100], number[10], *stringPtr;
-    int i = 0, j = 0, line, end;
-    FILE *myFile;
+    char address[100], tempAddress[100], command[100], temp[100], text[1000], buffText[1000], number[10], *stringPtr;
+    int i = 0, j = 0, line, position;
+    FILE *myTempFile;
     scanf("%s", command);
     getchar();
     if (!strcmp(command, "--file"))
@@ -41,12 +47,16 @@ void insertStr()
                 break;
             }
             tempAddress[i] = address[i];
-
             j++;
         }
         if (!access(tempAddress, F_OK))
         {
-            myFile = fopen(tempAddress, "w");
+            myFile = fopen(tempAddress, "r");
+            strncpy(temp, tempAddress, strlen(tempAddress) - 4);
+            strcat(temp, "_temp.txt");
+            strcpy(clipboard, temp);
+            myTempFile = fopen(temp, "w+");
+            strcpy(temp, tempAddress);
             tempAddress[j - 6] = c;
             j = 0;
             i++;
@@ -100,8 +110,74 @@ void insertStr()
                 number[j] = address[i];
             }
             number[j] = '\0';
-            end = strtod(number, &stringPtr);
+            position = strtod(number, &stringPtr);
+            for (size_t i = 0; i < strlen(text); i++)
+            {
+                if (text[i] == '\\')
+                {
+                    if (text[i + 1] == 'n' && text[i - 1] != '\\')
+                    {
+                        text[i] = '\n';
+                        j = i;
+                        // shift(text,i);
+                        for (j; j < strlen(text); j++)
+                            text[j + 1] = text[j + 2];
+                        text[j] = '\0';
+                    }
+                    if (text[i + 1] == '"' && text[i - 1] != '\\')
+                    {
+                        text[i] = '"';
+                        j = i;
+                        // shift(text,i);
+                        for (j; j < strlen(text); j++)
+                            text[j + 1] = text[j + 2];
+                        text[j] = '\0';
+                    }
+                    if (text[i + 1] == '\\')
+                    {
+                        j = i;
+                        // shift(text,i);
+                        for (j; j < strlen(text); j++)
+                            text[j + 1] = text[j + 2];
+                        text[j] = '\0';
+                    }
+                }
+            }
+            int currentLine = 1;
+            while (true)
+            {
+                fgets(buffText, 1000, myFile);
+                if (feof(myFile))
+                    break;
+                if (line == currentLine)
+                {
+                    for (size_t i = 0; i < strlen(buffText); i++)
+                    {
+                        if (i == position)
+                            fputs(text, myTempFile);
+                        fputc(buffText[i], myTempFile);
+                    }
+                    if (strlen(buffText) == position)
+                    {
+                        fputs(text, myTempFile);
+                    }
+                }
+                else
+                {
+                    fputs(buffText, myTempFile);
+                }
+                currentLine++;
+            }
+            if (currentLine == line)
+            {
+                fputc('\n', myTempFile);
+                fputs(text, myTempFile);
+            }
+            fclose(myTempFile);
             fclose(myFile);
+            remove(temp);
+            rename(clipboard, temp);
+            // memset()
         }
         else
         {
@@ -139,7 +215,7 @@ void insertStr()
         tempAddress[i - 6] = '\0';
         if (!access(tempAddress, F_OK))
         {
-            myFile = fopen(tempAddress, "w");
+            myFile = fopen(tempAddress, "r");
         }
         else
         {
@@ -195,7 +271,40 @@ void insertStr()
         }
         number[j] = '\0';
         j = 0;
-        end = strtod(number, &stringPtr);
+        position = strtod(number, &stringPtr);
+        for (size_t i = 0; i < strlen(text); i++)
+        {
+            if (text[i] == '\\')
+            {
+                if (text[i + 1] == 'n' && text[i - 1] != '\\')
+                {
+                    text[i] = '\n';
+                    j = i;
+                    // shift(text,i);
+                    for (j; j < strlen(text); j++)
+                        text[j + 1] = text[j + 2];
+                    text[j] = '\0';
+                }
+                if (text[i + 1] == '"' && text[i - 1] != '\\')
+                {
+                    text[i] = '"';
+                    j = i;
+                    // shift(text,i);
+                    for (j; j < strlen(text); j++)
+                        text[j + 1] = text[j + 2];
+                    text[j] = '\0';
+                }
+                if (text[i + 1] == '\\')
+                {
+                    j = i;
+                    // shift(text,i);
+                    for (j; j < strlen(text); j++)
+                        text[j + 1] = text[j + 2];
+                    text[j] = '\0';
+                }
+            }
+        }
+        fprintf(myFile, "%s", text);
         fclose(myFile);
     }
     memset(tempAddress, '\0', sizeof(tempAddress));

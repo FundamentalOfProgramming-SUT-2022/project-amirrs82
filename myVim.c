@@ -9,11 +9,13 @@
 char address[100], tempAddress[100], command[100], text[100], number[10], *stringPtr, c;
 int i = 0, j = 0, line, end;
 bool quotation;
+bool quotation;
 FILE *myFile;
 
 void createFile();
 void insertStr()
 {
+    bool quotation;
     char address[100], tempAddress[100], command[100], temp[7], text[100], number[10], *stringPtr;
     int i = 0, j = 0, line, end;
     FILE *myFile;
@@ -51,7 +53,6 @@ void insertStr()
             if (address[i] == '"')
             {
                 quotation = true;
-                // i++;
             }
             else
                 quotation = false;
@@ -74,8 +75,6 @@ void insertStr()
                 {
                     tempAddress[i - 1] = address[i];
                     text[j] = address[i];
-                    // tempAddress[i - 1] = address[i];
-                    // text[j] = address[i];
                 }
 
                 j++;
@@ -106,7 +105,10 @@ void insertStr()
         }
         else
         {
-            printf("The file does not exist");
+            printf("The file does not exist\n");
+            memset(tempAddress, '\0', sizeof(tempAddress));
+            memset(address, '\0', sizeof(address));
+            memset(text, '\0', sizeof(text));
             return;
         }
         i = 0;
@@ -133,16 +135,22 @@ void insertStr()
             }
             tempAddress[i] = address[i + 2];
         }
+        c = tempAddress[i - 6];
+        tempAddress[i - 6] = '\0';
         if (!access(tempAddress, F_OK))
         {
             myFile = fopen(tempAddress, "w");
         }
         else
         {
-            printf("The file does not exist");
+            printf("The file does not exist\n");
+            memset(tempAddress, '\0', sizeof(tempAddress));
+            memset(address, '\0', sizeof(address));
+            memset(text, '\0', sizeof(text));
             return;
         }
-        if (address[i] == '"')
+        tempAddress[i - 6] = c;
+        if (address[i + 3] == '"')
         {
             quotation = true;
             i++;
@@ -153,11 +161,19 @@ void insertStr()
         {
             if (strstr(tempAddress, " --pos"))
             {
-                text[j - 7] = '\0';
+                if (quotation)
+                {
+                    text[j - 8] = '\0';
+                    text[j] = '\0';
+                }
+                else
+                {
+                    text[j - 7] = '\0';
+                }
                 break;
             }
             text[j] = address[i + 3];
-            tempAddress[i] = address[i + 2];
+            tempAddress[i - 1] = address[i + 2];
             j++;
         }
         j = 0;
@@ -182,6 +198,9 @@ void insertStr()
         end = strtod(number, &stringPtr);
         fclose(myFile);
     }
+    memset(tempAddress, '\0', sizeof(tempAddress));
+    memset(address, '\0', sizeof(address));
+    memset(text, '\0', sizeof(text));
 }
 int main()
 {
@@ -191,7 +210,9 @@ int main()
         if (!strcmp(command, "createfile"))
             createFile();
         else if (!strcmp(command, "insertstr"))
+        {
             insertStr();
+        }
         else
             printf("Wrong Command! Please try again\n");
         scanf("%s", command);
@@ -199,7 +220,6 @@ int main()
 }
 void createFile()
 {
-    // char address[100], tempAddress[100], command[100];
     scanf("%s", command);
     getchar();
     if (!strcmp(command, "--file"))
@@ -248,7 +268,6 @@ void createFile()
     }
     else if (address[0] == '/')
     {
-        // tempAddress[0] = c;
         if (access(address, F_OK))
         {
             for (size_t i = 0; i <= strlen(address); i++)

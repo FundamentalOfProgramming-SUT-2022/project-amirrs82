@@ -7,8 +7,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <windows.h>
-char address[100], tempAddress[100], command[100], text[1000], buffText[1000], temp[100], number[10], clipboard[100], *stringPtr, c;
-int i = 0, j = 0, line, position;
+char address[100], tempAddress[100], command[100], c;
+int i = 0, j = 0;
 bool quotation;
 FILE *myFile;
 // void shift(char arr[], int currentLocation)
@@ -27,8 +27,9 @@ FILE *myFile;
 // }
 
 void createFile();
-void insertStr();
+void insert();
 void cat();
+void remove_();
 
 int main()
 {
@@ -38,9 +39,11 @@ int main()
         if (!strcmp(command, "createfile"))
             createFile();
         else if (!strcmp(command, "insertstr"))
-            insertStr();
+            insert();
         else if (!strcmp(command, "cat"))
             cat();
+        else if (!strcmp(command, "removestr"))
+            remove_();
         else
             printf("Wrong Command! Please try again\n");
         scanf("%s", command);
@@ -120,12 +123,11 @@ void createFile()
     }
 }
 
-void insertStr()
+void insert()
 {
-    bool quotation;
-    char address[100], tempAddress[100], command[100], temp[100], text[1000], buffText[1000], number[10], *stringPtr;
-    int i = 0, j = 0, line, position;
     FILE *myTempFile;
+    int line, position;
+    char buffText[1000], text[1000], number[10], tempFileName[100], tempFileName2[100], *stringPtr;
     scanf("%s", command);
     getchar();
     if (!strcmp(command, "--file"))
@@ -152,19 +154,16 @@ void insertStr()
         }
         if (!access(tempAddress, F_OK))
         {
-            myFile = fopen(tempAddress, "r");
-            strncpy(temp, tempAddress, strlen(tempAddress) - 4);
-            strcat(temp, "_temp.txt");
-            strcpy(clipboard, temp);
-            myTempFile = fopen(temp, "w+");
-            strcpy(temp, tempAddress);
+            strcpy(tempFileName, tempAddress);
+            strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
+            strcat(tempFileName2, "__temp.txt");
+            myFile = fopen(tempFileName, "r");
+            myTempFile = fopen(tempFileName2, "w+");
             tempAddress[j - 6] = c;
             j = 0;
             i++;
             if (address[i] == '"')
-            {
                 quotation = true;
-            }
             else
                 quotation = false;
             for (i; i < strlen(address); i++)
@@ -187,7 +186,6 @@ void insertStr()
                     tempAddress[i - 1] = address[i];
                     text[j] = address[i];
                 }
-
                 j++;
             }
             j = 0;
@@ -220,8 +218,7 @@ void insertStr()
                     {
                         text[i] = '\n';
                         j = i;
-                        // shift(text,i);
-                        for (j; j < strlen(text); j++)
+                        for (j; j < strlen(text); j++) // shift
                             text[j + 1] = text[j + 2];
                         text[j] = '\0';
                     }
@@ -229,16 +226,14 @@ void insertStr()
                     {
                         text[i] = '"';
                         j = i;
-                        // shift(text,i);
-                        for (j; j < strlen(text); j++)
+                        for (j; j < strlen(text); j++) // shift
                             text[j + 1] = text[j + 2];
                         text[j] = '\0';
                     }
                     if (text[i + 1] == '\\')
                     {
                         j = i;
-                        // shift(text,i);
-                        for (j; j < strlen(text); j++)
+                        for (j; j < strlen(text); j++) // shift
                             text[j + 1] = text[j + 2];
                         text[j] = '\0';
                     }
@@ -269,11 +264,10 @@ void insertStr()
                 if (feof(myFile))
                     break;
             }
-
             fclose(myTempFile);
             fclose(myFile);
-            remove(temp);
-            rename(clipboard, temp);
+            remove(tempFileName);
+            rename(tempFileName2, tempFileName);
         }
         else
         {
@@ -311,7 +305,11 @@ void insertStr()
         tempAddress[i - 6] = '\0';
         if (!access(tempAddress, F_OK))
         {
-            myFile = fopen(tempAddress, "r");
+            strcpy(tempFileName, tempAddress);
+            strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
+            strcat(tempFileName2, "__temp.txt");
+            myFile = fopen(tempFileName, "r");
+            myTempFile = fopen(tempFileName2, "w+");
         }
         else
         {
@@ -376,8 +374,7 @@ void insertStr()
                 {
                     text[i] = '\n';
                     j = i;
-                    // shift(text,i);
-                    for (j; j < strlen(text); j++)
+                    for (j; j < strlen(text); j++) // shift
                         text[j + 1] = text[j + 2];
                     text[j] = '\0';
                 }
@@ -385,16 +382,14 @@ void insertStr()
                 {
                     text[i] = '"';
                     j = i;
-                    // shift(text,i);
-                    for (j; j < strlen(text); j++)
+                    for (j; j < strlen(text); j++) // shift
                         text[j + 1] = text[j + 2];
                     text[j] = '\0';
                 }
                 if (text[i + 1] == '\\')
                 {
                     j = i;
-                    // shift(text,i);
-                    for (j; j < strlen(text); j++)
+                    for (j; j < strlen(text); j++) // shift
                         text[j + 1] = text[j + 2];
                     text[j] = '\0';
                 }
@@ -427,16 +422,18 @@ void insertStr()
         }
         fclose(myTempFile);
         fclose(myFile);
-        remove(temp);
-        rename(clipboard, temp);
+        remove(tempFileName);
+        rename(tempFileName2, tempFileName);
     }
     memset(tempAddress, '\0', sizeof(tempAddress));
     memset(address, '\0', sizeof(address));
     memset(text, '\0', sizeof(text));
+    i = 0;
 }
 
 void cat()
 {
+    char buffText[1000];
     scanf("%s", command);
     if (!strcmp(command, "--file"))
     {
@@ -449,7 +446,6 @@ void cat()
             {
                 fgets(buffText, 1000, myFile);
                 printf("%s", buffText);
-                // puts(buffText);
                 if (feof(myFile))
                     break;
             }
@@ -457,7 +453,206 @@ void cat()
         }
     }
     else
-    {
         printf("wrong command, Please try again");
+}
+
+void remove_()
+{
+    FILE *myTempFile;
+    char number[10], tempAddress[100], buffText[1000], tempFileName[100], tempFileName2[100];
+    int line, position, length, j = 0, i = 0, exactPosition = 0;
+    scanf("%s", command);
+    if (!strcmp(command, "--file"))
+    {
+        getchar(); // for space
+        gets(address);
     }
+    else
+    {
+        printf("Wrong command, please try again");
+        memset(address, '\0', sizeof(address));
+        return;
+    }
+    if (address[0] == '/')
+    {
+        quotation = false;
+        for (i; i < strlen(address); i++, j++)
+        {
+            if (strstr(tempAddress, " --pos"))
+            {
+                c = tempAddress[j - 6];
+                tempAddress[j - 6] = '\0';
+                break;
+            }
+            tempAddress[i] = address[i];
+        }
+    }
+    else if (address[0] == '"')
+    {
+        i = 1;
+        quotation = true;
+        for (i; i < strlen(address); i++)
+        {
+            if (address[i] == '"')
+            {
+                i++;
+                break;
+            }
+            tempAddress[i - 1] = address[i];
+        }
+        for (int k = 0; k < 6; i++, k++)
+            tempAddress[i - 2] = address[i];
+        c = tempAddress[i - 8];
+        tempAddress[i - 8] = '\0';
+        i -= 2;
+        j = i;
+    }
+    if (!access(tempAddress, F_OK))
+    {
+        strcpy(tempFileName, tempAddress);
+        strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
+        strcat(tempFileName2, "__temp.txt");
+        myFile = fopen(tempFileName, "r");
+        myTempFile = fopen(tempFileName2, "w+");
+        tempAddress[j - 6] = c;
+        j = 0;
+        if (quotation)
+        {
+            for (i; i < strlen(address); i++)
+            {
+                if (strstr(tempAddress, ":"))
+                    break;
+                tempAddress[i] = address[i + 2];
+                number[j] = address[i + 2];
+                j++;
+            }
+            number[j] = '\0';
+        }
+        else
+        {
+            for (i; i < strlen(address); i++)
+            {
+                if (strstr(tempAddress, ":"))
+                    break;
+                tempAddress[i] = address[i];
+                number[j] = address[i];
+                j++;
+            }
+            number[j] = '\0';
+        }
+        j = 0;
+
+        char *ptr;
+        line = strtod(number, &ptr);
+        if (quotation)
+        {
+            for (i; i < strlen(address); i++)
+            {
+                if (strstr(tempAddress, " -size"))
+                    break;
+                tempAddress[i] = address[i + 2];
+                number[j] = address[i + 2];
+                j++;
+            }
+        }
+        else
+        {
+            for (i; i < strlen(address); i++)
+            {
+                if (strstr(tempAddress, " -size"))
+                    break;
+                tempAddress[i] = address[i];
+                number[j] = address[i];
+                j++;
+            }
+        }
+        number[j - 6] = '\0';
+        j = 0;
+        position = strtod(number, &ptr);
+        i++;
+        if (quotation)
+        {
+            while (isdigit(address[i + 2]))
+            {
+                number[j] = address[i + 2];
+                i++;
+                j++;
+            }
+        }
+        else
+        {
+            while (isdigit(address[i]))
+            {
+                number[j] = address[i];
+                i++;
+                j++;
+            }
+        }
+        number[j] = '\0';
+        j = 0;
+        i += 2; // space and dash skipped
+        length = strtod(number, &ptr);
+        int currentLine = 1, flag = 1;
+        while (true)
+        {
+            char c = fgetc(myFile);
+            if (feof(myFile))
+                break;
+            buffText[j] = c;
+            if (line == currentLine && flag)
+            {
+                exactPosition = j + position;
+                flag = 0;
+            }
+            j++;
+            if (c == '\n')
+                currentLine++;
+        }
+        if (quotation)
+            i += 2;
+        if (address[i] == 'f')
+        {
+            for (size_t k = 0; k < length; k++)
+            {
+                for (j = exactPosition; j < strlen(buffText); j++)
+                {
+                    buffText[j] = buffText[j + 1];
+                    i = j;
+                }
+                buffText[j] = '\0';
+            }
+        }
+        else if (address[i] == 'b')
+        {
+            for (size_t k = 0; k < length; k++)
+            {
+                for (j = exactPosition; j < strlen(buffText); j++)
+                {
+                    buffText[j] = buffText[j + 1];
+                }
+                exactPosition--;
+                buffText[j] = '\0';
+            }
+        }
+        else
+        {
+            printf("Wrong command, Please try again\n");
+            memset(address, '\0', sizeof(address));
+            memset(tempAddress, '\0', sizeof(tempAddress));
+            return;
+        }
+        for (size_t i = 0; i < strlen(buffText); i++)
+            fputc(buffText[i], myTempFile);
+
+        fclose(myTempFile);
+        fclose(myFile);
+        remove(tempFileName);
+        rename(tempFileName2, tempFileName);
+    }
+    else
+        printf("The file does not exist!\n");
+    memset(address, '\0', sizeof(address));
+    memset(tempAddress, '\0', sizeof(tempAddress));
+    memset(tempFileName, '\0', sizeof(tempFileName));
+    memset(tempFileName2, '\0', sizeof(tempFileName2));
 }

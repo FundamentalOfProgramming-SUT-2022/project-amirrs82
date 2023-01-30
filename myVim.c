@@ -73,6 +73,7 @@ void insert_to_array(char arr[], char c, int position, int size)
         arr[i] = arr[i - 1];
     }
     arr[position] = c;
+    arr[size + 1] = '\0';
 }
 
 void delete_from_array(char arr[], int position, int size)
@@ -191,8 +192,17 @@ void insert()
     c = getchar();
     if (c != '"')
     {
-        scanf("%s", text);
-        insert_to_array(text, c, 0, strlen(text));
+        text[0] = c;
+        i = 1;
+        while (true)
+        {
+            c = getchar();
+            if (c == ' ' || c == '\n')
+                break;
+            text[i] = c;
+            i++;
+        }
+        text[i] = '\0';
     }
     else if (c == '"')
     {
@@ -412,7 +422,7 @@ void cut()
             clipboard[j] = buffText[i]; // copy
         clipboard[j] = '\0';
 
-        for (size_t k = 0; k < length; k++)
+        for (size_t i = 0; i < length; i++)
             delete_from_array(buffText, exactPosition, strlen(buffText));
     }
 
@@ -422,7 +432,7 @@ void cut()
             clipboard[j] = buffText[i]; // copy
         clipboard[j] = '\0';
 
-        for (size_t k = 0; k < length; k++)
+        for (size_t i = 0; i < length; i++)
         {
             delete_from_array(buffText, exactPosition, strlen(buffText));
             exactPosition--;
@@ -482,22 +492,33 @@ void paste()
 
 void find()
 {
-    int i = 0, j = 0, k = 0, state = 0, at;
+    int i = 0, j = 0, state = 0, at;
     char buffText[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], c, *stringPtr;
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
+    memset(byCharPosition, 0, sizeof(byCharPosition));
 
     scanf("%s", command); // "--file" skipped
     getchar();
     if (!openFile(1, "r"))
         return;
+    // openFile(1, "r");
     scanf("%s", command); // " --str" skipped
     getchar();            // space skipped
     c = getchar();
     if (c != '"')
     {
-        scanf("%s", text_to_find);
-        insert_to_array(text_to_find, c, 0, strlen(text_to_find));
+        text_to_find[0] = c;
+        i = 1;
+        while (true)
+        {
+            c = getchar();
+            if (c == ' ' || c == '\n')
+                break;
+            text_to_find[i] = c;
+            i++;
+        }
+        text_to_find[i] = '\0';
     }
     else if (c == '"')
     {
@@ -521,8 +542,8 @@ void find()
         else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
             star = true;
     }
-
-    gets(command);
+    if (c != '\n')
+        gets(command);
     if (strstr(command, "-count"))
         state += 1;
     if (strstr(command, "-at"))
@@ -543,17 +564,12 @@ void find()
         state += 1000;
     // 1, 10 ,100 ,1000 , 110, 1100 are possible states
 
-    while ((c = fgetc(myFile)) != EOF)
-    {
-        buffText[j] = c;
-        j++;
-    }
-    buffText[j] = '\0';
+    fgets(buffText, 1000, myFile);
+    printf("%s ", text_to_find);
 
     if (star)
     {
-        if (text_to_find[0] == '*')
-            ;
+        // if (text_to_find[0] == '*')
     }
     else
     {
@@ -564,11 +580,12 @@ void find()
             {
 
                 byCharPosition[j] = strstr(buffText + i, text_to_find);
+                byCharPosition[j] = byCharPosition[j] - buffText;
 
-                if (byCharPosition[j] - buffText != 0 && i == 0)
-                    i = byCharPosition[j] - buffText;
+                if (byCharPosition[j] != 0 && i == 0)
+                    i = byCharPosition[j];
 
-                for (int k = byCharPosition[j] - buffText; k > -1; k--)
+                for (int k = byCharPosition[j]; k > -1; k--)
                 {
                     if (buffText[k] == ' ' && buffText[k - 1] != ' ')
                         byWordPosition[j]++;
@@ -583,9 +600,9 @@ void find()
 
         switch (state)
         {
-        case 0: // default
+        case 0: // no options
             if (flag)
-                printf("%d\n", byCharPosition[0] - buffText);
+                printf("%d\n", byCharPosition[0]);
             else
                 printf("-1\n");
             break;
@@ -597,9 +614,9 @@ void find()
             if (at > j)
                 printf("-1\n");
             else if (!at)
-                printf("Invalid Position");
+                printf("Invalid Position\n");
             else
-                printf("%d\n", byCharPosition[at - 1] - buffText);
+                printf("%d\n", byCharPosition[at - 1]);
             break;
         case 100: // byword
             if (flag)
@@ -613,14 +630,14 @@ void find()
                 for (size_t i = 0; i < j; i++)
                 {
                     if (i)
-                        printf(", %d", byCharPosition[i] - buffText);
+                        printf(", %d", byCharPosition[i]);
                     else
-                        printf("%d", byCharPosition[i] - buffText);
+                        printf("%d", byCharPosition[i]);
                 }
                 printf("\n");
             }
             else
-                printf("-1");
+                printf("-1\n");
             break;
         case 110: // at & byword
             if (at > j)
@@ -654,144 +671,211 @@ void find()
     fclose(myFile);
 }
 
-// void replace()
-// {
-//     int i = 0, j = 0, k = 0, state = 0, at;
-//     char buffText[1000], tempBuffText[1000], text_to_find[1000], text_to_replace[1000], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
-//     bool star = false, flag = false;
-//     memset(byWordPosition, 0, sizeof(byWordPosition));
+void replace()
+{
+    int i = 0, j = 0, state = 0, at;
+    char buffText[1000], tempBuffText[1000], text_to_find[1000], text_to_replace[1000], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
+    bool star = false, flag = false;
+    memset(byWordPosition, 0, sizeof(byWordPosition));
 
-//     scanf("%s", command); //" --file skipped"
-//     getchar();
-//     if (!openFile(1, "r+"))
-//         return;
+    scanf("%s", command); //" --file skipped"
+    getchar();
+    // if (!openFile(2, "r"))
+    // return;
+    openFile(2, "r");
 
-//     scanf("%s", command); // " --str1" skipped
-//     getchar();
-//     c = getchar();
-//     if (c != '"')
-//         scanf("%s", text_to_find);
-//     else if (c == '"')
-//     {
-//         while (true)
-//         {
-//             if (c == '"' && text_to_find[i - 1] != '\\')
-//                 break;
-//             text_to_find[i] = c;
-//             i++;
-//         }
-//         text_to_find[i] = '\0';
-//     }
-//     i = 0;
-//     for (size_t i = 0; i < strlen(text_to_find); i++)
-//     {
-//         if (text_to_find[i] == '*' && text_to_find[i - 1] == '\\')
-//         {
-//             text_to_find[i - 1] = '*';
-//             delete_from_array(text_to_find, i, strlen(text_to_find));
-//         }
-//         else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
-//             star = true;
-//     }
+    scanf("%s", command); // " --str1" skipped
+    getchar();
+    c = getchar();
+    if (c != '"')
+    {
+        text_to_find[0] = c;
+        i = 1;
+        while (true)
+        {
+            c = getchar();
+            if (c == ' ' || c == '\n')
+                break;
+            text_to_find[i] = c;
+            i++;
+        }
+        text_to_find[i] = '\0';
+    }
+    else if (c == '"')
+    {
+        while (true)
+        {
+            if (c == '"' && text_to_find[i - 1] != '\\')
+                break;
+            text_to_find[i] = c;
+            i++;
+        }
+        text_to_find[i] = '\0';
+    }
+    i = 0;
+    for (size_t i = 0; i < strlen(text_to_find); i++)
+    {
+        if (text_to_find[i] == '*' && text_to_find[i - 1] == '\\')
+        {
+            text_to_find[i - 1] = '*';
+            delete_from_array(text_to_find, i, strlen(text_to_find));
+        }
+        else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
+            star = true;
+    }
 
-//     scanf("%s", command); // " --str2" skipped
-//     getchar();
-//     c = getchar();
-//     if (c != '"')
-//         scanf("%s", text_to_replace);
-//     else if (c == '"')
-//     {
-//         while (true)
-//         {
-//             if (c == '"' && text_to_replace[i - 1] != '\\')
-//                 break;
-//             text_to_replace[i] = c;
-//             i++;
-//         }
-//         text_to_replace[i] = '\0';
-//     }
+    scanf("%s", command); // " --str2" skipped
+    getchar();
+    c = getchar();
+    if (c != '"')
+    {
+        text_to_replace[0] = c;
+        i = 1;
+        while (true)
+        {
+            c = getchar();
+            if (c == ' ' || c == '\n')
+                break;
+            text_to_replace[i] = c;
+            i++;
+        }
+        text_to_replace[i] = '\0';
+    }
+    else if (c == '"')
+    {
+        while (true)
+        {
+            if (c == '"' && text_to_replace[i - 1] != '\\')
+                break;
+            text_to_replace[i] = c;
+            i++;
+        }
+        text_to_replace[i] = '\0';
+    }
 
-//     gets(command);
-//     if (strstr(command, "-at"))
-//     {
-//         state += 10;
-//         while (!isdigit(command[i]))
-//             i++;
-//         while (isdigit(command[i]))
-//         {
-//             number[j] = command[i];
-//             i++;
-//         }
-//         at = strtod(number, &stringPtr);
-//     }
-//     if (strstr(command, "-all"))
-//         state += 1000;
+    i = 0;
+    if (c != '\n')
+    {
+        gets(command);
+        if (strstr(command, "-at"))
+        {
+            state += 1;
+            while (!isdigit(command[i]))
+                i++;
+            while (isdigit(command[i]))
+            {
+                number[j] = command[i];
+                i++;
+                j++;
+            }
+            at = strtod(number, &stringPtr);
+        }
+        if (strstr(command, "-all"))
+            state += 10;
+    }
+    j = 0;
 
-//     while ((c = fgetc(myFile)) != EOF)
-//     {
-//         buffText[j] = c;
-//         j++;
-//     }
+    fgets(buffText, 1000, myFile);
+    if (star)
+    {
+    }
+    else
+    {
+        for (size_t i = 0; i < strlen(buffText); i++)
+        {
+            if (strstr(buffText + i, text_to_find))
+            {
 
-//     if (star)
-//     {
-//     }
-//     else
-//     {
-//         j = 0;
-//         for (size_t i = 0; i < strlen(buffText); i++)
-//         {
-//             if (strstr(buffText + i, text_to_find))
-//             {
+                byCharPosition[j] = strstr(buffText + i, text_to_find);
+                byCharPosition[j] = byCharPosition[j] - buffText;
 
-//                 byCharPosition[j] = strstr(buffText + i, text_to_find);
+                if (byCharPosition[j] - buffText != 0 && i == 0)
+                    i = byCharPosition[j];
 
-//                 if (byCharPosition[j] - buffText != 0 && i == 0)
-//                     i = byCharPosition[j] - buffText;
+                for (int k = byCharPosition[j]; k > -1; k--)
+                {
+                    if (buffText[k] == ' ' && buffText[k - 1] != ' ')
+                        byWordPosition[j]++;
+                }
 
-//                 for (int k = byCharPosition[j] - buffText; k > -1; k--)
-//                 {
-//                     if (buffText[k] == ' ' && buffText[k - 1] != ' ')
-//                         byWordPosition[j]++;
-//                 }
+                if (j)
+                    i += byCharPosition[j] - byCharPosition[j - 1] - 1;
+                j++;
+                flag = true; // founded
+            }
+        }
+    }
+    rewind(myFile);
+    // int first = byCharPosition[0];
+    // int last = first + strlen(text_to_replace);
+    // int difference = strlen(text_to_replace) - strlen(buffText);
+    // strcpy(tempBuffText, buffText);
+    // j = 0;
 
-//                 if (j)
-//                     i += byCharPosition[j] - byCharPosition[j - 1];
-//                 j++;
-//                 flag = true; // founded
-//             }
-//         }
-//     }
-//     int first = byCharPosition[0] - buffText;
-//     int last = first + strlen(text_to_replace);
-//     int difference = strlen(text_to_replace) - strlen(buffText);
-//     strcpy(tempBuffText, buffText);
-//     j = 0;
-
-//     switch (state)
-//     {
-//     case 0:// does not work
-//         for (i = first; i < last; i++, j++)
-//         {
-//             buffText[i] = text_to_replace[j];
-//         }
-//         j = 0;
-//         for (i = last; i < strlen(buffText) + difference; i++, j++)
-//         {
-//             buffText[i] = tempBuffText[first + difference + j];
-//         }
-
-//         break;
-//     case 1:
-//         break;
-//     case 10:
-//         break;
-//     default:
-//         printf("Invalid combination\n");
-//         break;
-//     }
-//     for (size_t i = 0; i < strlen(buffText); i++)
-//     {
-//         fputc(buffText[i], myFile);
-//     }
-// }
+    switch (state)
+    {
+    case 0: // does not work
+        if (flag)
+        {
+            i = 0;
+            while ((c = fgetc(myFile)) != EOF)
+            {
+                if (i == byCharPosition[0])
+                    fputs(text_to_replace, myTempFile);
+                if (!((i >= byCharPosition[0]) && (i < byCharPosition[0] + strlen(text_to_find))))
+                    fputc(c, myTempFile);
+                i++;
+            }
+        }
+        else
+            printf("-1\n");
+        break;
+    case 1:
+        if (flag)
+        {
+            if (at > j || !at)
+            {
+                printf("Invalid position\n");
+                return;
+            }
+            i = 0;
+            while ((c = fgetc(myFile)) != EOF)
+            {
+                if (i == byCharPosition[at - 1])
+                    fputs(text_to_replace, myTempFile);
+                if (!(i >= byCharPosition[at - 1] && i < byCharPosition[at - 1] + strlen(text_to_find)))
+                    fputc(c, myTempFile);
+                i++;
+            }
+        }
+        else
+            printf("-1\n");
+        break;
+    case 10:
+        if (flag)
+        {
+            j = 0;
+            i = 0;
+            while ((c = fgetc(myFile)) != EOF)
+            {
+                if (i == byCharPosition[j] + strlen(text_to_find))
+                    j++;
+                if (i == byCharPosition[j])
+                    fputs(text_to_replace, myTempFile);
+                if (!(i >= byCharPosition[j] && i < byCharPosition[j] + strlen(text_to_find)))
+                    fputc(c, myTempFile);
+                i++;
+            }
+        }
+        else
+            printf("-1\n");
+        break;
+    default:
+        printf("Invalid combination\n");
+        break;
+    }
+    fclose(myTempFile);
+    fclose(myFile);
+    remove(tempFileName);
+    rename(tempFileName2, tempFileName);
+}

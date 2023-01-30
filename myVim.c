@@ -9,16 +9,8 @@
 #include <string.h>
 #include <windows.h>
 
-char address[100], tempAddress[100], command[100], clipboard[1000];
-
-// void shift(char arr[], int currentLocation)
-// {
-//     for (size_t i = currentLocation; i < strlen(arr); i++)
-//     {
-//         arr[i] = arr[i + 1];
-//     }
-//     arr[i] = '\0';
-// }
+char address[100], tempAddress[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100];
+FILE *myFile, *myTempFile;
 
 // void hidingFile
 // {
@@ -34,6 +26,10 @@ void copy();
 void cut();
 void paste();
 void find();
+void replace();
+void insert_to_array(char arr[], char c, int position, int size);
+int openFile(int n, char *mode);
+void delete_from_array(char arr[], int position, int size);
 
 int main()
 {
@@ -42,6 +38,9 @@ int main()
     {
         memset(address, 0, sizeof(address));
         memset(tempAddress, 0, sizeof(tempAddress));
+        memset(tempFileName, 0, sizeof(tempFileName));
+        memset(tempFileName2, 0, sizeof(tempFileName2));
+
         if (!strcmp(command, "createfile"))
             createFile();
         else if (!strcmp(command, "insertstr"))
@@ -58,6 +57,8 @@ int main()
             paste();
         else if (!strcmp(command, "find"))
             find();
+        else if (!strcmp(command, "replace"))
+            replace();
         else
             printf("Wrong Command! Please try again\n");
         memset(command, 0, sizeof(command));
@@ -65,1120 +66,482 @@ int main()
     }
 }
 
+void insert_to_array(char arr[], char c, int position, int size)
+{
+    for (int i = size; i >= position; i--)
+    {
+        arr[i] = arr[i - 1];
+    }
+    arr[position] = c;
+}
+
+void delete_from_array(char arr[], int position, int size)
+{
+    int i;
+    for (i = position; i < size; i++)
+        arr[i] = arr[i + 1];
+    arr[i] = '\0';
+}
+
+int openFile(int n, char *mode)
+{
+    int i = 0;
+    char c = getchar();
+
+    if (c == '/')
+    {
+        scanf("%s", address);
+        insert_to_array(address, '/', 0, strlen(address));
+    }
+
+    else if (c == '"')
+    {
+        while ((c = getchar()) != '"')
+        {
+            address[i] = c;
+            i++;
+        }
+    }
+
+    int fileAccess = access(address, F_OK);
+    switch (fileAccess)
+    {
+    case 0:
+        switch (n)
+        {
+        case 1: // one file to open
+            myFile = fopen(address, mode);
+            break;
+        case 2: // two files to open
+            strcpy(tempFileName, address);
+            strncpy(tempFileName2, address, strlen(address) - 4);
+            strcat(tempFileName2, "__temp.txt");
+            myFile = fopen(tempFileName, "r");
+            myTempFile = fopen(tempFileName2, "w+");
+            break;
+        default:
+            break;
+        }
+        return 1;
+        break;
+
+    default:
+        printf("The file does not exist\n");
+        memset(address, '\0', sizeof(address));
+        return 0;
+        break;
+    }
+}
+
 void createFile()
 {
     FILE *myFile;
-    scanf("%s", command);
-    if (!strcmp(command, "--file"))
+    int i;
+    scanf("%s", command); // " --file skipped"
+    getchar();            // space skipped
+    char c = getchar();
+    if (c == '/')
     {
-        getchar();
-        gets(address);
+        scanf("%s", address);
+        insert_to_array(address, '/', 0, strlen(address));
+    }
+    else if (c == '"')
+    {
+        while ((c = getchar()) != '"')
+        {
+            address[i] = c;
+            i++;
+        }
+        address[i] = '\0';
+    }
+    if (access(address, F_OK))
+    {
+        for (i = 0; i < strlen(address); i++)
+        {
+            if (address[i] == '/')
+            {
+                mkdir(tempAddress);
+            }
+            tempAddress[i] = address[i];
+        }
+        tempAddress[i] = '\0';
+        myFile = fopen(tempAddress, "w");
+        fclose(myFile);
+        return;
     }
     else
     {
-        printf("Wrong Command! Please try again\n");
+        printf("The file already exists!\n");
         return;
-    }
-    if (address[0] == '"')
-    {
-        address[strlen(address) - 1] = '\0';
-        for (size_t i = 0; i < strlen(address); i++)
-        {
-            if (i == strlen(address) - 1)
-            {
-                address[i] = '\0';
-                break;
-            }
-            address[i] = address[i + 1];
-        }
-
-        if (access(address, F_OK))
-        {
-            for (size_t i = 0; i < strlen(address); i++)
-            {
-                if (address[i] == '/')
-                {
-                    mkdir(tempAddress);
-                }
-                tempAddress[i] = address[i];
-            }
-            tempAddress[strlen(address)] = '\0';
-            myFile = fopen(tempAddress, "w");
-            fclose(myFile);
-            return;
-        }
-        else
-        {
-            printf("The file already exists!\n");
-            return;
-        }
-    }
-    else if (address[0] == '/')
-    {
-        if (access(address, F_OK))
-        {
-            for (size_t i = 0; i <= strlen(address); i++)
-            {
-                if (address[i] == '/')
-                {
-                    mkdir(tempAddress);
-                }
-                tempAddress[i] = address[i];
-            }
-            myFile = fopen(tempAddress, "w");
-            fclose(myFile);
-            return;
-        }
-        else
-        {
-            printf("The file already exists!\n");
-            return;
-        }
     }
 }
 
 void insert()
 {
-    FILE *myTempFile, *myFile;
     int line, position, i = 0, j = 0, currentLine = 1;
-    char buffText[1000], text[1000], number[10], tempFileName[100], tempFileName2[100], *stringPtr, c;
-    bool quotation;
-    memset(tempFileName, 0, sizeof(tempFileName));
-    memset(tempFileName2, 0, sizeof(tempFileName2));
+    char buffText[1000], text[1000], c;
 
     scanf("%s", command);
     getchar();
-    if (!strcmp(command, "--file"))
-        gets(address);
-    else
-    {
-        printf("Wrong Command! Please try again\n");
+    if (!openFile(2, "r"))
         return;
-    }
-    if (address[0] == '/')
-    {
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, " --str"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-            j++;
-        }
-        if (!access(tempAddress, F_OK))
-        {
-            strcpy(tempFileName, tempAddress);
-            strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
-            strcat(tempFileName2, "__temp.txt");
-            myFile = fopen(tempFileName, "r");
-            myTempFile = fopen(tempFileName2, "w+");
-            tempAddress[j - 6] = c;
-            j = 0;
-            i++;
-            if (address[i] == '"')
-                quotation = true;
-            else
-                quotation = false;
-            for (i; i < strlen(address); i++)
-            {
-                if (strstr(tempAddress, " --pos"))
-                {
-                    if (quotation)
-                        text[j - 7] = '\0';
-                    else
-                        text[j - 6] = '\0';
-                    break;
-                }
-                if (quotation)
-                {
-                    tempAddress[i - 1] = address[i + 1];
-                    text[j] = address[i + 1];
-                }
-                else
-                {
-                    tempAddress[i - 1] = address[i];
-                    text[j] = address[i];
-                }
-                j++;
-            }
-            j = 0;
-            i++;
-            for (i; i < strlen(address); i++, j++)
-            {
-                if (address[i] == ':')
-                {
-                    i++;
-                    break;
-                }
-                number[j] = address[i];
-            }
-            number[j] = '\0';
-            j = 0;
-            line = strtod(number, &stringPtr);
-            for (i; i < strlen(address); i++, j++)
-            {
-                if (address[i] == '\0')
-                    break;
-                number[j] = address[i];
-            }
-            number[j] = '\0';
-            position = strtod(number, &stringPtr);
-            for (size_t i = 0; i < strlen(text); i++)
-            {
-                if (text[i] == '\\')
-                {
-                    if (text[i + 1] == 'n' && text[i - 1] != '\\')
-                    {
-                        text[i] = '\n';
-                        j = i;
-                        for (j; j < strlen(text); j++) // shift
-                            text[j + 1] = text[j + 2];
-                        text[j] = '\0';
-                    }
-                    if (text[i + 1] == '"' && text[i - 1] != '\\')
-                    {
-                        text[i] = '"';
-                        j = i;
-                        for (j; j < strlen(text); j++) // shift
-                            text[j + 1] = text[j + 2];
-                        text[j] = '\0';
-                    }
-                    if (text[i + 1] == '\\')
-                    {
-                        j = i;
-                        for (j; j < strlen(text); j++) // shift
-                            text[j + 1] = text[j + 2];
-                        text[j] = '\0';
-                    }
-                }
-            }
-            while (true)
-            {
-                fgets(buffText, 1000, myFile);
-                if (line == currentLine)
-                {
-                    for (size_t i = 0; i < strlen(buffText); i++)
-                    {
-                        if (i == position)
-                            fputs(text, myTempFile);
-                        fputc(buffText[i], myTempFile);
-                    }
-                    if (strlen(buffText) == position)
-                        fputs(text, myTempFile);
-                }
-                else
-                    fputs(buffText, myTempFile);
 
-                currentLine++;
-
-                if (feof(myFile))
-                    break;
-            }
-            fclose(myTempFile);
-            fclose(myFile);
-            remove(tempFileName);
-            rename(tempFileName2, tempFileName);
-            // memset(tempFileName2, 0, sizeof(tempFileName2));
-        }
-        else
-        {
-            printf("The file does not exist\n");
-            memset(text, '\0', sizeof(text));
-            return;
-        }
-        i = 0;
-    }
-    else if (address[0] == '"')
+    scanf("%s", command); // " --str" skipped
+    getchar();
+    c = getchar();
+    if (c != '"')
     {
-        i = 1;
-        for (i; i < strlen(address); i++)
-        {
-            if (address[i] == '"')
-            {
-                i++;
-                break;
-            }
-            tempAddress[i - 1] = address[i];
-        }
-        i -= 2;
-        tempAddress[i] = '\0';
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, " --str"))
-            {
-                break;
-            }
-            tempAddress[i] = address[i + 2];
-        }
-        c = tempAddress[i - 6];
-        tempAddress[i - 6] = '\0';
-        if (!access(tempAddress, F_OK))
-        {
-            strcpy(tempFileName, tempAddress);
-            strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
-            strcat(tempFileName2, "__temp.txt");
-            myFile = fopen(tempFileName, "r");
-            myTempFile = fopen(tempFileName2, "w+");
-        }
-        else
-        {
-            printf("The file does not exist\n");
-            memset(text, '\0', sizeof(text));
-            return;
-        }
-        tempAddress[i - 6] = c;
-        if (address[i + 3] == '"')
-        {
-            quotation = true;
-            i++;
-        }
-        else
-            quotation = false;
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, " --pos"))
-            {
-                if (quotation)
-                {
-                    text[j - 8] = '\0';
-                    text[j] = '\0';
-                }
-                else
-                {
-                    text[j - 7] = '\0';
-                }
-                break;
-            }
-            text[j] = address[i + 3];
-            tempAddress[i - 1] = address[i + 2];
-            j++;
-        }
-        j = 0;
-        i++;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (address[i + 1] == ':')
-                break;
-            number[j] = address[i + 1];
-        }
-        number[j] = '\0';
-        j = 0;
-        line = strtod(number, &stringPtr);
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (address[i + 2] == '\0')
-                break;
-            number[j] = address[i + 2];
-        }
-        number[j] = '\0';
-        j = 0;
-        position = strtod(number, &stringPtr);
-        for (size_t i = 0; i < strlen(text); i++)
-        {
-            if (text[i] == '\\')
-            {
-                if (text[i + 1] == 'n' && text[i - 1] != '\\')
-                {
-                    text[i] = '\n';
-                    j = i;
-                    for (j; j < strlen(text); j++) // shift
-                        text[j + 1] = text[j + 2];
-                    text[j] = '\0';
-                }
-                if (text[i + 1] == '"' && text[i - 1] != '\\')
-                {
-                    text[i] = '"';
-                    j = i;
-                    for (j; j < strlen(text); j++) // shift
-                        text[j + 1] = text[j + 2];
-                    text[j] = '\0';
-                }
-                if (text[i + 1] == '\\')
-                {
-                    j = i;
-                    for (j; j < strlen(text); j++) // shift
-                        text[j + 1] = text[j + 2];
-                    text[j] = '\0';
-                }
-            }
-        }
-        int currentLine = 1;
+        scanf("%s", text);
+        insert_to_array(text, c, 0, strlen(text));
+    }
+    else if (c == '"')
+    {
         while (true)
         {
-            fgets(buffText, 1000, myFile);
-            if (line == currentLine)
-            {
-                for (size_t i = 0; i < strlen(buffText); i++)
-                {
-                    if (i == position)
-                        fputs(text, myTempFile);
-                    fputc(buffText[i], myTempFile);
-                }
-                if (strlen(buffText) == position)
-                {
-                    fputs(text, myTempFile);
-                }
-            }
-            else
-            {
-                fputs(buffText, myTempFile);
-            }
-            currentLine++;
-            if (feof(myFile))
+            if ((c = getchar()) == '"' && text[i - 1] != '\\')
                 break;
+            text[i] = c;
+            i++;
         }
-        fclose(myTempFile);
-        fclose(myFile);
-        remove(tempFileName);
-        rename(tempFileName2, tempFileName);
+        text[i] = '\0';
     }
-    memset(text, '\0', sizeof(text));
-    i = 0;
+    scanf("%s", command); //" --pos" skipped
+    scanf("%d:%d", &line, &position);
+    for (size_t i = 0; i < strlen(text); i++)
+    {
+        if (text[i] == '\\')
+        {
+            if (text[i + 1] == 'n' && text[i - 1] != '\\')
+            {
+                text[i] = '\n';
+                delete_from_array(text, i + 1, strlen(text));
+            }
+            if (text[i + 1] == '"' && text[i - 1] != '\\')
+            {
+                text[i] = '"';
+                delete_from_array(text, i + 1, strlen(text));
+            }
+            if (text[i + 1] == '*' && text[i - 1] != '\\')
+            {
+                text[i] = '*';
+                delete_from_array(text, i + 1, strlen(text));
+            }
+            if (text[i + 1] == '\\')
+                delete_from_array(text, i + 1, strlen(text));
+        }
+    }
+
+    while (true)
+    {
+        fgets(buffText, 1000, myFile);
+        if (line == currentLine)
+        {
+            for (size_t i = 0; i < strlen(buffText); i++)
+            {
+                if (i == position)
+                    fputs(text, myTempFile);
+                fputc(buffText[i], myTempFile);
+            }
+            if (strlen(buffText) == position)
+                fputs(text, myTempFile);
+        }
+        else
+            fputs(buffText, myTempFile);
+
+        currentLine++;
+
+        if (feof(myFile))
+            break;
+    }
+    fclose(myTempFile);
+    fclose(myFile);
+    remove(tempFileName);
+    rename(tempFileName2, tempFileName);
 }
 
 void cat()
 {
-    FILE *myFile;
     char buffText[1000];
+    int i = 0;
     scanf("%s", command);
-    if (!strcmp(command, "--file"))
+    getchar();
+    if (!openFile(1, "r"))
+        return;
+
+    while (true)
     {
-        getchar();
-        gets(address);
-        if (!access(address, F_OK))
-        {
-            myFile = fopen(address, "r");
-            while (true)
-            {
-                fgets(buffText, 1000, myFile);
-                printf("%s", buffText);
-                if (feof(myFile))
-                    break;
-            }
-            printf("\n");
-        }
+        fgets(buffText, 1000, myFile);
+        printf("%s", buffText);
+        if (feof(myFile))
+            break;
     }
-    else
-        printf("wrong command, Please try again\n");
+    printf("\n");
 }
 
 void remove_()
 {
-    FILE *myTempFile, *myFile;
-    char number[10], buffText[1000], tempFileName[100], tempFileName2[100], *stringPtr, c;
+    char buffText[1000], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
-    scanf("%s", command);
-    if (!strcmp(command, "--file"))
-    {
-        getchar(); // for space
-        gets(address);
-    }
-    else
-    {
-        printf("Wrong command, please try again\n");
+    scanf("%s", command); // " --file" skipped
+    getchar();
+    if (!openFile(2, "r"))
         return;
-    }
-    if (address[0] == '/')
+
+    scanf("%s", command); // " --pos" skipped
+    scanf("%d:%d", &line, &position);
+
+    scanf("%s", command); // " -size" skipped
+    scanf("%d", &length);
+
+    while ((c = fgetc(myFile)) != EOF)
     {
-        for (i; i < strlen(address); i++, j++)
+        buffText[i] = c;
+
+        if (line == currentLine && flag)
         {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
+            exactPosition = i + position;
+            flag = 0;
         }
-    }
-    else if (address[0] == '"') // delete the quotations
-    {
-        for (j = 0; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        for (j = 1; j < strlen(address); j++)
-        {
-            if (address[j] == '"')
-                break;
-        }
-        for (j; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        j = 0;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-        }
-    }
-    if (!access(tempAddress, F_OK))
-    {
-        strcpy(tempFileName, tempAddress);
-        strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
-        strcat(tempFileName2, "__temp.txt");
-        myFile = fopen(tempFileName, "r");
-        myTempFile = fopen(tempFileName2, "w+");
-        tempAddress[j - 6] = c;
-        j = 0;
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, ":"))
-                break;
-            tempAddress[i] = address[i];
-            number[j] = address[i];
-            j++;
-        }
-        number[j] = '\0';
-        j = 0;
-        line = strtod(number, &stringPtr);
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, " -size"))
-                break;
-            tempAddress[i] = address[i];
-            number[j] = address[i];
-            j++;
-        }
-        number[j - 6] = '\0';
-        j = 0;
-        position = strtod(number, &stringPtr);
+
+        if (c == '\n')
+            currentLine++;
         i++;
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        j = 0;
-        i += 2; // space and dash skipped
-        length = strtod(number, &stringPtr);
-        while ((c = fgetc(myFile)) != EOF)
-        {
-            // char c = fgetc(myFile);
-            // if (feof(myFile))
-            //     break;
-            printf("%c", c);
-            buffText[j] = c;
-
-            if (line == currentLine && flag)
-            {
-                exactPosition = j + position;
-                flag = 0;
-            }
-
-            if (c == '\n')
-                currentLine++;
-
-            j++;
-        }
-        buffText[j] = '\0';
-        if (address[i] == 'f')
-        {
-            for (size_t k = 0; k < length; k++)
-            {
-                for (j = exactPosition; j < strlen(buffText); j++)
-                {
-                    buffText[j] = buffText[j + 1];
-                }
-                buffText[j] = '\0';
-            }
-        }
-        else if (address[i] == 'b')
-        {
-            for (size_t k = 0; k < length; k++)
-            {
-                for (j = exactPosition; j < strlen(buffText); j++)
-                {
-                    buffText[j] = buffText[j + 1];
-                }
-                exactPosition--;
-                buffText[j] = '\0';
-            }
-        }
-        else
-        {
-            printf("Wrong command, Please try again\n");
-            return;
-        }
-        for (size_t i = 0; i < strlen(buffText); i++)
-            fputc(buffText[i], myTempFile);
-
-        j = 0;
-        fclose(myTempFile);
-        fclose(myFile);
-        remove(tempFileName);
-        rename(tempFileName2, tempFileName);
     }
-    else
-        printf("The file does not exist!\n");
-    // memset(buffText, '\0', sizeof(buffText));
-    memset(tempFileName, '\0', sizeof(tempFileName));
-    memset(tempFileName2, '\0', sizeof(tempFileName2));
+    buffText[i] = '\0';
+    scanf("%s", command); // -f or -b
+    if (strstr(command, "-f"))
+    {
+        for (size_t k = 0; k < length; k++)
+            delete_from_array(buffText, exactPosition, strlen(buffText));
+    }
+    else if (strstr(command, "-b"))
+    {
+        for (size_t k = 0; k < length; k++)
+        {
+            delete_from_array(buffText, exactPosition, strlen(buffText));
+            exactPosition--;
+        }
+    }
+
+    for (size_t i = 0; i < strlen(buffText); i++)
+        fputc(buffText[i], myTempFile);
+
+    fclose(myTempFile);
+    fclose(myFile);
+    remove(tempFileName);
+    rename(tempFileName2, tempFileName);
 }
 
 void copy()
 {
-    FILE *myTempFile, *myFile;
-    char number[10], buffText[1000], c, *stringPtr;
+    char buffText[1000], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
-    scanf("%s", command);
-    if (!strcmp(command, "--file"))
-    {
-        getchar(); // for space
-        gets(address);
-    }
-    else
-    {
-        printf("Wrong command, please try again\n");
+    scanf("%s", command); // "--file" skipped
+    getchar();            // space skipped
+    if (!openFile(1, "r"))
         return;
-    }
-    if (address[0] == '/')
+
+    scanf("%s", command); // " --pos" skipped
+    scanf("%d:%d", &line, &position);
+
+    scanf("%s", command); // " -size" skipped
+    scanf("%d", &length);
+    while ((c = fgetc(myFile)) != EOF)
     {
-        for (i; i < strlen(address); i++, j++)
+        buffText[i] = c;
+        if (line == currentLine && flag)
         {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
+            exactPosition = i + position;
+            flag = 0;
         }
-    }
-    else if (address[0] == '"') // delete the quotations
-    {
-        for (j = 0; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        for (j = 1; j < strlen(address); j++)
-        {
-            if (address[j] == '"')
-                break;
-        }
-        for (j; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        j = 0;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-        }
-    }
-    if (!access(tempAddress, F_OK))
-    {
-        myFile = fopen(tempAddress, "r");
-        tempAddress[j - 6] = c;
         i++;
-        j = 0;
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        j = 0;
-        line = strtod(number, &stringPtr);
-        i++; // ":" skipped
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        position = strtod(number, &stringPtr);
-        j = 0;
-        i += 7; // " -size " skipped
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        length = strtod(number, &stringPtr);
-        j = 0;
-        int currentLine = 1;
-        while ((c = fgetc(myFile)) != EOF)
-        {
-            // char c = fgetc(myFile);
-            // if (feof(myFile))
-            //     break;
-            buffText[j] = c;
-            if (line == currentLine && flag)
-            {
-                exactPosition = j + position;
-                flag = 0;
-            }
-            j++;
-            if (c == '\n')
-                currentLine++;
-        }
-        buffText[j] = '\0';
-        j = 0;
-        if (address[strlen(address) - 1] == 'f')
-        {
-            for (size_t i = exactPosition; i < exactPosition + length; i++, j++)
-            {
-                clipboard[j] = buffText[i];
-            }
-        }
-        else if (address[strlen(address) - 1] == 'b')
-        {
-            for (size_t i = exactPosition - length; i < exactPosition; i++, j++)
-            {
-                clipboard[j] = buffText[i];
-            }
-        }
-        else
-        {
-            printf("Wrong command, Please try again\n");
-        }
-        clipboard[j] = '\0';
+        if (c == '\n')
+            currentLine++;
     }
-    else
-        printf("The file does not exist\n");
+    buffText[i] = '\0';
+
+    scanf("%s", command); // -f or -b
+    if (strstr(command, "-f"))
+    {
+        for (i = exactPosition; i < exactPosition + length; i++, j++)
+            clipboard[j] = buffText[i];
+    }
+    else if (strstr(command, "-b"))
+    {
+        for (i = exactPosition - length; i < exactPosition; i++, j++)
+            clipboard[j] = buffText[i];
+    }
+    clipboard[j] = '\0';
+    fclose(myFile);
 }
 
 void cut()
 {
-    FILE *myTempFile, *myFile;
-    char number[10], buffText[1000], tempFileName[100], tempFileName2[100], c, *stringPtr;
+    char buffText[1000], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
-    scanf("%s", command);
-    if (!strcmp(command, "--file"))
-    {
-        getchar(); // for space
-        gets(address);
-    }
-    else
-    {
-        printf("Wrong command, please try again\n");
+    scanf("%s", command); //--file skipped
+    getchar();
+    if (!openFile(2, "r"))
         return;
-    }
-    if (address[0] == '/')
+
+    scanf("%s", command); // " --pos" skipped
+    scanf("%d:%d", &line, &position);
+
+    scanf("%s", command); // " -size" skipped
+    scanf("%d", &length);
+
+    while ((c = fgetc(myFile)) != EOF)
     {
-        for (i; i < strlen(address); i++, j++)
+        buffText[i] = c;
+        if (line == currentLine && flag)
         {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
+            exactPosition = i + position;
+            flag = 0;
         }
-    }
-    else if (address[0] == '"') // delete the quotations
-    {
-        for (j = 0; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        for (j = 1; j < strlen(address); j++)
-        {
-            if (address[j] == '"')
-                break;
-        }
-        for (j; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        j = 0;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-        }
-    }
-    if (!access(tempAddress, F_OK))
-    {
-        strcpy(tempFileName, tempAddress);
-        strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
-        strcat(tempFileName2, "__temp.txt");
-        myFile = fopen(tempFileName, "r");
-        myTempFile = fopen(tempFileName2, "w+");
-        tempAddress[j - 6] = c;
         i++;
-        j = 0;
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        j = 0;
-        line = strtod(number, &stringPtr);
-        i++; // ":" skipped
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        position = strtod(number, &stringPtr);
-        j = 0;
-        i += 7; // " -size " skipped
-        while (isdigit(address[i]))
-        {
-            number[j] = address[i];
-            i++;
-            j++;
-        }
-        number[j] = '\0';
-        length = strtod(number, &stringPtr);
-        j = 0;
-        int currentLine = 1;
-        while ((c = fgetc(myFile)) != EOF)
-        {
-            buffText[j] = c;
-            if (line == currentLine && flag)
-            {
-                exactPosition = j + position;
-                flag = 0;
-            }
-            j++;
-            if (c == '\n')
-                currentLine++;
-        }
-        buffText[j] = '\0';
-        j = 0;
-        if (address[strlen(address) - 1] == 'f')
-        {
-            for (i = exactPosition; i < exactPosition + length; i++, j++)
-                clipboard[j] = buffText[i]; // copy
-            clipboard[j] = '\0';
-            printf("%s", clipboard);
-            for (size_t k = 0; k < length; k++)
-            {
-                for (i = exactPosition; i < strlen(buffText); i++)
-                    buffText[i] = buffText[i + 1]; // shift and remove
-                buffText[i] = '\0';
-            }
-        }
-        else if (address[strlen(address) - 1] == 'b')
-        {
-            for (i = exactPosition - length; i < exactPosition; i++, j++)
-                clipboard[j] = buffText[i]; // copy
-            clipboard[j] = '\0';
+        if (c == '\n')
+            currentLine++;
+    }
+    buffText[i] = '\0';
 
-            for (size_t k = 0; k < length; k++)
-            {
-                for (i = exactPosition; i < strlen(buffText); i++)
-                    buffText[i] = buffText[i + 1]; // shift and remove
-                exactPosition--;
-                buffText[i] = '\0';
-            }
-        }
-        else
-            printf("Wrong command, Please try again\n");
+    scanf("%s", command); // -f or -b
 
-        for (size_t i = 0; i < strlen(buffText); i++)
-            fputc(buffText[i], myTempFile);
-        fclose(myTempFile);
-        fclose(myFile);
-        remove(tempFileName);
-        rename(tempFileName2, tempFileName);
+    if (strstr(command, "-f"))
+    {
+        for (i = exactPosition; i < exactPosition + length; i++, j++)
+            clipboard[j] = buffText[i]; // copy
+        clipboard[j] = '\0';
+
+        for (size_t k = 0; k < length; k++)
+            delete_from_array(buffText, exactPosition, strlen(buffText));
+    }
+
+    else if (strstr(command, "-b"))
+    {
+        for (i = exactPosition - length; i < exactPosition; i++, j++)
+            clipboard[j] = buffText[i]; // copy
+        clipboard[j] = '\0';
+
+        for (size_t k = 0; k < length; k++)
+        {
+            delete_from_array(buffText, exactPosition, strlen(buffText));
+            exactPosition--;
+        }
     }
     else
-        printf("The file does not exist\n");
+        printf("Wrong command, Please try again\n");
+
+    for (size_t i = 0; i < strlen(buffText); i++)
+        fputc(buffText[i], myTempFile);
+
+    fclose(myTempFile);
+    fclose(myFile);
+    remove(tempFileName);
+    rename(tempFileName2, tempFileName);
 }
 
-void paste() // does not work properly
+void paste()
 {
-    FILE *myTempFile, *myFile;
-    int line, position, i = 0, j = 0;
-    char buffText[1000], number[10], tempFileName[100], tempFileName2[100], *stringPtr, c;
-    memset(tempFileName, '\0', sizeof(tempFileName));
-    memset(tempFileName2, '\0', sizeof(tempFileName2));
-    scanf("%s", command);
-    if (!strcmp(command, "--file"))
-    {
-        getchar();
-        gets(address);
-    }
-    else
-    {
-        printf("Wrong Command! Please try again\n");
+    int line, position, i = 0, j = 0, currentLine = 1;
+    char buffText[1000], c;
+    scanf("%s", command); //--file skipped
+    getchar();
+    if (!openFile(2, "r"))
         return;
-    }
 
-    if (address[0] == '/')
-    {
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-            j++;
-        }
-    }
-    else if (address[0] == '"')
-    {
-        for (j = 0; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        for (j = 1; j < strlen(address); j++)
-        {
-            if (address[j] == '"')
-                break;
-        }
-        for (j; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        j = 0;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (strstr(tempAddress, " --pos"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-        }
-    }
-    if (!access(tempAddress, F_OK))
-    {
-        strcpy(tempFileName, tempAddress);
-        strncpy(tempFileName2, tempAddress, strlen(tempAddress) - 4);
-        strcat(tempFileName2, "__temp.txt");
-        myFile = fopen(tempFileName, "r");
-        myTempFile = fopen(tempFileName2, "w+");
-        tempAddress[j - 6] = c;
-        j = 0;
-        i++;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (address[i] == ':')
-            {
-                i++;
-                break;
-            }
-            number[j] = address[i];
-        }
-        number[j] = '\0';
-        line = strtod(number, &stringPtr);
-        j = 0;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (address[i] == '\0')
-                break;
-            number[j] = address[i];
-        }
-        number[j] = '\0';
-        position = strtod(number, &stringPtr);
-        int currentLine = 1;
+    scanf("%s", command); //--pos skipped
+    scanf("%d:%d", &line, &position);
 
-        while (true)
+    while (true)
+    {
+        fgets(buffText, 1000, myFile);
+        if (line == currentLine)
         {
-            fgets(buffText, 1000, myFile);
-            if (line == currentLine)
+            for (size_t i = 0; i < strlen(buffText); i++)
             {
-                for (size_t i = 0; i < strlen(buffText); i++)
-                {
-                    if (i == position)
-                        fputs(clipboard, myTempFile);
-                    fputc(buffText[i], myTempFile);
-                }
-                if (strlen(buffText) == position)
+                if (i == position)
                     fputs(clipboard, myTempFile);
+                fputc(buffText[i], myTempFile);
             }
-            else
-                fputs(buffText, myTempFile);
-
-            currentLine++;
-
-            if (feof(myFile))
-                break;
+            if (strlen(buffText) == position)
+                fputs(clipboard, myTempFile);
         }
-        printf("%s %s", tempFileName, tempFileName2);
-        fclose(myTempFile);
-        fclose(myFile);
-        if (remove(tempFileName) == 0)
-            ;
-        rename(tempFileName2, tempFileName);
+        else
+            fputs(buffText, myTempFile);
+
+        currentLine++;
+
+        if (feof(myFile))
+            break;
     }
-    else
-    {
-        printf("The file does not exist\n");
-        return;
-    }
+    fclose(myTempFile);
+    fclose(myFile);
+    remove(tempFileName);
+    rename(tempFileName2, tempFileName);
 }
 
 void find()
 {
-    FILE *myFile;
-    int i = 0, j = 0, k = 0, state = 0;
-    char buffText[1000], text_to_find[1000], attribute[100], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
-    bool star = false, dash = false, flag = false;
-    int count = 0, at;
+    int i = 0, j = 0, k = 0, state = 0, at;
+    char buffText[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], c, *stringPtr;
+    bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
 
-    scanf("%s", command);
-    if (!strcmp(command, "--file"))
-    {
-        getchar();
-        gets(address);
-    }
-    else
-    {
-        printf("Wrong Command! Please try again\n");
+    scanf("%s", command); // "--file" skipped
+    getchar();
+    if (!openFile(1, "r"))
         return;
-    }
-    if (address[0] == '/')
+    scanf("%s", command); // " --str" skipped
+    getchar();            // space skipped
+    c = getchar();
+    if (c != '"')
     {
-        for (i; i < strlen(address); i++)
-        {
-            if (strstr(tempAddress, " --str"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-            j++;
-        }
+        scanf("%s", text_to_find);
+        insert_to_array(text_to_find, c, 0, strlen(text_to_find));
     }
-    else if (address[0] == '"')
+    else if (c == '"')
     {
-        for (j = 0; j < strlen(address); j++)
+        while (true)
         {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        for (j = 1; j < strlen(address); j++)
-        {
-            if (address[j] == '"')
+            if (c == '"' && text_to_find[i - 1] != '\\')
                 break;
+            text_to_find[i] = c;
+            i++;
         }
-        for (j; j < strlen(address); j++)
-        {
-            address[j] = address[j + 1];
-        }
-        address[j] = '\0';
-        j = 0;
-        for (i; i < strlen(address); i++, j++)
-        {
-            if (strstr(tempAddress, " --str"))
-            {
-                c = tempAddress[j - 6];
-                tempAddress[j - 6] = '\0';
-                break;
-            }
-            tempAddress[i] = address[i];
-        }
+        text_to_find[i] = '\0';
     }
-    if (!access(tempAddress, F_OK))
+
+    for (size_t i = 0; i < strlen(text_to_find); i++)
     {
-        myFile = fopen(tempAddress, "r");
-        tempAddress[j - 6] = c;
-        i++;
-
-        for (j = 0; i < strlen(address); j++, i++)
+        if (text_to_find[i] == '*' && text_to_find[i - 1] == '\\')
         {
-            if (address[i] == '-')
-            {
-                dash = true;
-                text_to_find[j - 1] = '\0'; // space removed
-                break;
-            }
-
-            text_to_find[j] = address[i];
-
-            if (address[i] == '*' && address[i - 1] == '\\')
-            {
-                j--;
-                text_to_find[j] = '*';
-            }
-            else if (address[i] == '*' && address[i - 1] != '\\')
-                star = true;
+            text_to_find[i - 1] = '*';
+            delete_from_array(text_to_find, i, strlen(text_to_find));
         }
-        text_to_find[j] = '\0';
+        else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
+            star = true;
+    }
 
-        if (text_to_find[0] == '"')
+    gets(command);
+    if (strstr(command, "-count"))
+        state += 1;
+    if (strstr(command, "-at"))
+    {
+        state += 10;
+        while (!isdigit(command[i]))
+            i++;
+        while (isdigit(command[i]))
         {
-            text_to_find[j - 2] = '\0'; // '"' removed
-
-            for (j = 0; j < strlen(text_to_find); j++)
-                text_to_find[j] = text_to_find[j + 1];
-
-            text_to_find[j] = '\0';
+            number[j] = command[i];
+            i++;
         }
-
-        for (j = 0; i < strlen(address); i++, j++)
-        {
-            attribute[j] = address[i];
-            while (isdigit(address[i]))
-            {
-                number[k] = address[i];
-                i++;
-                k++;
-            }
-        }
-
-        attribute[j] = '\0';
-        number[k] = '\0';
         at = strtod(number, &stringPtr);
-
-        if (strstr(attribute, "count"))
-            state += 1;
-        if (strstr(attribute, "at"))
-            state += 10;
-        if (strstr(attribute, "byword"))
-            state += 100;
-        if (strstr(attribute, "all"))
-            state += 1000;
-        // 1, 10 ,100 ,1000 , 110, 1100 are possible states
     }
-    else
-    {
-        printf("The file does not exist!\n");
-        return;
-    }
-
-    j = 0;
+    if (strstr(command, "-byword"))
+        state += 100;
+    if (strstr(command, "-all"))
+        state += 1000;
+    // 1, 10 ,100 ,1000 , 110, 1100 are possible states
 
     while ((c = fgetc(myFile)) != EOF)
     {
@@ -1186,112 +549,249 @@ void find()
         j++;
     }
     buffText[j] = '\0';
+
     if (star)
     {
+        if (text_to_find[0] == '*')
+            ;
     }
     else
     {
-        if (dash)
+        j = 0;
+        for (size_t i = 0; i < strlen(buffText); i++)
         {
-            j = 0;
-            for (size_t i = 0; i < strlen(buffText); i++)
+            if (strstr(buffText + i, text_to_find))
             {
-                if (strstr(buffText + i, text_to_find))
+
+                byCharPosition[j] = strstr(buffText + i, text_to_find);
+
+                if (byCharPosition[j] - buffText != 0 && i == 0)
+                    i = byCharPosition[j] - buffText;
+
+                for (int k = byCharPosition[j] - buffText; k > -1; k--)
                 {
-
-                    byCharPosition[j] = strstr(buffText + i, text_to_find);
-
-                    if (byCharPosition[j] - buffText != 0 && i == 0)
-                        i = byCharPosition[j] - buffText;
-
-                    for (int k = byCharPosition[j] - buffText; k > -1; k--)
-                    {
-                        if (buffText[k] == ' ' && buffText[k - 1] != ' ')
-                            byWordPosition[j]++;
-                    }
-
-                    if (j)
-                        i += byCharPosition[j] - byCharPosition[j - 1];
-                    j++;
-                    flag = true; // founded
+                    if (buffText[k] == ' ' && buffText[k - 1] != ' ')
+                        byWordPosition[j]++;
                 }
-            }
 
-            switch (state)
-            {
-            case 1: // done
-                printf("%d\n", j);
-                j = 0;
-                break;
-            case 10: // done
-                if (at > j)
-                    printf("-1\n");
-                else if (!at)
-                    printf("Invalid Position");
-                else
-                    printf("%d\n", byCharPosition[at - 1] - buffText);
-                break;
-            case 100: // done
-                if (flag)
-                    printf("%d\n", byWordPosition[0] + 1);
-                else
-                    printf("-1\n");
-                break;
-            case 1000: // done
-                if (flag)
-                {
-                    for (size_t i = 0; i < j; i++)
-                    {
-                        if (i)
-                            printf(", %d", byCharPosition[i] - buffText);
-                        else
-                            printf("%d", byCharPosition[i] - buffText);
-                    }
-                    printf("\n");
-                }
-                else
-                    printf("-1");
-                break;
-            case 110: // done
-                if (at > j)
-                    printf("-1\n");
-                else if (!at)
-                    printf("Invalid Position\n");
-                else
-                    printf("%d\n", byWordPosition[at - 1] + 1);
-                break;
-            case 1100:
-                if (flag) // done
-                {
-                    for (size_t i = 0; i < j; i++)
-                    {
-                        if (i)
-                            printf(", %d", byWordPosition[i] + 1);
-                        else
-                            printf("%d", byWordPosition[i] + 1);
-                    }
-                    printf("\n");
-                }
-                else
-                    printf("-1");
-                break;
-
-            default:
-                printf("Invalid combination");
-                break;
+                if (j)
+                    i += byCharPosition[j] - byCharPosition[j - 1] - 1;
+                j++;
+                flag = true; // founded
             }
         }
-        else
+
+        switch (state)
         {
-            char *firstByCharPosition = strstr(buffText, text_to_find);
-            if (firstByCharPosition != 0)
+        case 0: // default
+            if (flag)
+                printf("%d\n", byCharPosition[0] - buffText);
+            else
+                printf("-1\n");
+            break;
+        case 1: // count
+            printf("%d\n", j);
+            j = 0;
+            break;
+        case 10: // at
+            if (at > j)
+                printf("-1\n");
+            else if (!at)
+                printf("Invalid Position");
+            else
+                printf("%d\n", byCharPosition[at - 1] - buffText);
+            break;
+        case 100: // byword
+            if (flag)
+                printf("%d\n", byWordPosition[0] + 1);
+            else
+                printf("-1\n");
+            break;
+        case 1000: // all
+            if (flag)
             {
-                printf("%d\n", firstByCharPosition - buffText);
-                // flag = true;
+                for (size_t i = 0; i < j; i++)
+                {
+                    if (i)
+                        printf(", %d", byCharPosition[i] - buffText);
+                    else
+                        printf("%d", byCharPosition[i] - buffText);
+                }
+                printf("\n");
+            }
+            else
+                printf("-1");
+            break;
+        case 110: // at & byword
+            if (at > j)
+                printf("-1\n");
+            else if (!at)
+                printf("Invalid Position\n");
+            else
+                printf("%d\n", byWordPosition[at - 1] + 1);
+            break;
+        case 1100: // byword & all
+            if (flag)
+            {
+                for (size_t i = 0; i < j; i++)
+                {
+                    if (i)
+                        printf(", %d", byWordPosition[i] + 1);
+                    else
+                        printf("%d", byWordPosition[i] + 1);
+                }
+                printf("\n");
             }
             else
                 printf("-1\n");
+            break;
+
+        default:
+            printf("Invalid combination\n");
+            break;
         }
     }
     fclose(myFile);
 }
+
+// void replace()
+// {
+//     int i = 0, j = 0, k = 0, state = 0, at;
+//     char buffText[1000], tempBuffText[1000], text_to_find[1000], text_to_replace[1000], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
+//     bool star = false, flag = false;
+//     memset(byWordPosition, 0, sizeof(byWordPosition));
+
+//     scanf("%s", command); //" --file skipped"
+//     getchar();
+//     if (!openFile(1, "r+"))
+//         return;
+
+//     scanf("%s", command); // " --str1" skipped
+//     getchar();
+//     c = getchar();
+//     if (c != '"')
+//         scanf("%s", text_to_find);
+//     else if (c == '"')
+//     {
+//         while (true)
+//         {
+//             if (c == '"' && text_to_find[i - 1] != '\\')
+//                 break;
+//             text_to_find[i] = c;
+//             i++;
+//         }
+//         text_to_find[i] = '\0';
+//     }
+//     i = 0;
+//     for (size_t i = 0; i < strlen(text_to_find); i++)
+//     {
+//         if (text_to_find[i] == '*' && text_to_find[i - 1] == '\\')
+//         {
+//             text_to_find[i - 1] = '*';
+//             delete_from_array(text_to_find, i, strlen(text_to_find));
+//         }
+//         else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
+//             star = true;
+//     }
+
+//     scanf("%s", command); // " --str2" skipped
+//     getchar();
+//     c = getchar();
+//     if (c != '"')
+//         scanf("%s", text_to_replace);
+//     else if (c == '"')
+//     {
+//         while (true)
+//         {
+//             if (c == '"' && text_to_replace[i - 1] != '\\')
+//                 break;
+//             text_to_replace[i] = c;
+//             i++;
+//         }
+//         text_to_replace[i] = '\0';
+//     }
+
+//     gets(command);
+//     if (strstr(command, "-at"))
+//     {
+//         state += 10;
+//         while (!isdigit(command[i]))
+//             i++;
+//         while (isdigit(command[i]))
+//         {
+//             number[j] = command[i];
+//             i++;
+//         }
+//         at = strtod(number, &stringPtr);
+//     }
+//     if (strstr(command, "-all"))
+//         state += 1000;
+
+//     while ((c = fgetc(myFile)) != EOF)
+//     {
+//         buffText[j] = c;
+//         j++;
+//     }
+
+//     if (star)
+//     {
+//     }
+//     else
+//     {
+//         j = 0;
+//         for (size_t i = 0; i < strlen(buffText); i++)
+//         {
+//             if (strstr(buffText + i, text_to_find))
+//             {
+
+//                 byCharPosition[j] = strstr(buffText + i, text_to_find);
+
+//                 if (byCharPosition[j] - buffText != 0 && i == 0)
+//                     i = byCharPosition[j] - buffText;
+
+//                 for (int k = byCharPosition[j] - buffText; k > -1; k--)
+//                 {
+//                     if (buffText[k] == ' ' && buffText[k - 1] != ' ')
+//                         byWordPosition[j]++;
+//                 }
+
+//                 if (j)
+//                     i += byCharPosition[j] - byCharPosition[j - 1];
+//                 j++;
+//                 flag = true; // founded
+//             }
+//         }
+//     }
+//     int first = byCharPosition[0] - buffText;
+//     int last = first + strlen(text_to_replace);
+//     int difference = strlen(text_to_replace) - strlen(buffText);
+//     strcpy(tempBuffText, buffText);
+//     j = 0;
+
+//     switch (state)
+//     {
+//     case 0:// does not work
+//         for (i = first; i < last; i++, j++)
+//         {
+//             buffText[i] = text_to_replace[j];
+//         }
+//         j = 0;
+//         for (i = last; i < strlen(buffText) + difference; i++, j++)
+//         {
+//             buffText[i] = tempBuffText[first + difference + j];
+//         }
+
+//         break;
+//     case 1:
+//         break;
+//     case 10:
+//         break;
+//     default:
+//         printf("Invalid combination\n");
+//         break;
+//     }
+//     for (size_t i = 0; i < strlen(buffText); i++)
+//     {
+//         fputc(buffText[i], myFile);
+//     }
+// }

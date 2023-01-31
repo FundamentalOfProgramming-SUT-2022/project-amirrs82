@@ -9,14 +9,8 @@
 #include <string.h>
 #include <windows.h>
 
-char address[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100];
+char address[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100], tempFileName3[100], c;
 FILE *myFile, *myTempFile;
-
-// void hidingFile
-// {
-//     DWORD attributes = GetFileAttributes(tempAddress);
-//     SetFileAttributes(tempAddress, attributes + FILE_ATTRIBUTE_HIDDEN);
-// }
 
 void createFile();
 void insert();
@@ -28,8 +22,12 @@ void paste();
 void find();
 void replace();
 void grep();
+void undo();
+void closing_pairs();
+void modifyArray(char arr[], int n);
 void insert_to_array(char arr[], char c, int position, int size);
 void delete_from_array(char arr[], int position, int size);
+void undoBackup();
 int openFile(int n, char *mode);
 
 int main()
@@ -55,16 +53,78 @@ int main()
             cut();
         else if (!strcmp(command, "pastestr"))
             paste();
-        // else if (!strcmp(command, "find"))
-        //     find();
-        // else if (!strcmp(command, "replace"))
-        //     replace();
+        else if (!strcmp(command, "find"))
+            find();
+        else if (!strcmp(command, "replace"))
+            replace();
         else if (!strcmp(command, "grep"))
             grep();
+        else if (!strcmp(command, "undo"))
+            undo();
+        else if (!strcmp(command, "auto-indent"))
+            closing_pairs();
         else
             printf("Wrong Command! Please try again\n");
-        memset(command, 0, sizeof(command));
         scanf("%s", command);
+    }
+}
+
+void modifyArray(char arr[], int n)
+{
+    int i = 0;
+    getchar();
+    c = getchar();
+    if (c != '"')
+    {
+        arr[0] = c;
+        i = 1;
+        while (true)
+        {
+            c = getchar();
+            if (c == ' ' || c == '\n')
+                break;
+            arr[i] = c;
+            i++;
+        }
+        arr[i] = '\0';
+    }
+    else if (c == '"')
+    {
+        while (true)
+        {
+            if ((c = getchar()) == '"' && arr[i - 1] != '\\')
+                break;
+            arr[i] = c;
+            i++;
+        }
+        arr[i] = '\0';
+    }
+
+    for (size_t i = 0; i < strlen(arr); i++)
+    {
+        if (arr[i] == '\\')
+        {
+            if (arr[i + 1] == 'n' && arr[i - 1] != '\\')
+            {
+                arr[i] = '\n';
+                delete_from_array(arr, i + 1, strlen(arr));
+            }
+            if (arr[i + 1] == '"' && arr[i - 1] != '\\')
+            {
+                arr[i] = '"';
+                delete_from_array(arr, i + 1, strlen(arr));
+            }
+            if (arr[i + 1] == '*' && arr[i - 1] != '\\')
+            {
+                arr[i] = '*';
+                delete_from_array(arr, i + 1, strlen(arr));
+            }
+            if (arr[i + 1] == '\\')
+            {
+                delete_from_array(arr, i + 1, strlen(arr));
+                i++;
+            }
+        }
     }
 }
 
@@ -84,6 +144,25 @@ void delete_from_array(char arr[], int position, int size)
     for (i = position; i < size; i++)
         arr[i] = arr[i + 1];
     arr[i] = '\0';
+}
+
+void undoBackup()
+{
+    char buffText[1000];
+    FILE *undoFile;
+    strncpy(tempFileName3, address, strlen(address) - 4);
+    strcat(tempFileName3, "____temp.txt");
+    undoFile = fopen(tempFileName3, "w");
+    while (true)
+    {
+        fgets(buffText, 1000, myFile);
+        fputs(buffText, undoFile);
+        if (feof(myFile))
+            break;
+    }
+    rewind(myFile);
+    SetFileAttributes(tempFileName3, FILE_ATTRIBUTE_HIDDEN);
+    fclose(undoFile);
 }
 
 int openFile(int n, char *mode)
@@ -191,60 +270,13 @@ void insert()
     getchar();
     if (!openFile(2, "r"))
         return;
+    undoBackup();
 
     scanf("%s", command); // " --str" skipped
-    getchar();
-    c = getchar();
-    if (c != '"')
-    {
-        text[0] = c;
-        i = 1;
-        while (true)
-        {
-            c = getchar();
-            if (c == ' ' || c == '\n')
-                break;
-            text[i] = c;
-            i++;
-        }
-        text[i] = '\0';
-    }
-    else if (c == '"')
-    {
-        while (true)
-        {
-            if ((c = getchar()) == '"' && text[i - 1] != '\\')
-                break;
-            text[i] = c;
-            i++;
-        }
-        text[i] = '\0';
-    }
+    modifyArray(text, 1);
+
     scanf("%s", command); //" --pos" skipped
     scanf("%d:%d", &line, &position);
-    for (size_t i = 0; i < strlen(text); i++)
-    {
-        if (text[i] == '\\')
-        {
-            if (text[i + 1] == 'n' && text[i - 1] != '\\')
-            {
-                text[i] = '\n';
-                delete_from_array(text, i + 1, strlen(text));
-            }
-            if (text[i + 1] == '"' && text[i - 1] != '\\')
-            {
-                text[i] = '"';
-                delete_from_array(text, i + 1, strlen(text));
-            }
-            if (text[i + 1] == '*' && text[i - 1] != '\\')
-            {
-                text[i] = '*';
-                delete_from_array(text, i + 1, strlen(text));
-            }
-            if (text[i + 1] == '\\')
-                delete_from_array(text, i + 1, strlen(text));
-        }
-    }
 
     while (true)
     {
@@ -301,6 +333,7 @@ void remove_()
     getchar();
     if (!openFile(2, "r"))
         return;
+    undoBackup();
 
     scanf("%s", command); // " --pos" skipped
     scanf("%d:%d", &line, &position);
@@ -398,6 +431,7 @@ void cut()
     getchar();
     if (!openFile(2, "r"))
         return;
+    undoBackup();
 
     scanf("%s", command); // " --pos" skipped
     scanf("%d:%d", &line, &position);
@@ -463,6 +497,7 @@ void paste()
     getchar();
     if (!openFile(2, "r"))
         return;
+    undoBackup();
 
     scanf("%s", command); //--pos skipped
     scanf("%d:%d", &line, &position);
@@ -498,7 +533,7 @@ void paste()
 void find()
 {
     int i = 0, j = 0, state = 0, at;
-    char buffText[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], c, *stringPtr;
+    char buffText[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], *stringPtr;
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
     memset(byCharPosition, 0, sizeof(byCharPosition));
@@ -509,44 +544,9 @@ void find()
         return;
     // openFile(1, "r");
     scanf("%s", command); // " --str" skipped
-    getchar();            // space skipped
-    c = getchar();
-    if (c != '"')
-    {
-        text_to_find[0] = c;
-        i = 1;
-        while (true)
-        {
-            c = getchar();
-            if (c == ' ' || c == '\n')
-                break;
-            text_to_find[i] = c;
-            i++;
-        }
-        text_to_find[i] = '\0';
-    }
-    else if (c == '"')
-    {
-        while (true)
-        {
-            if (c == '"' && text_to_find[i - 1] != '\\')
-                break;
-            text_to_find[i] = c;
-            i++;
-        }
-        text_to_find[i] = '\0';
-    }
 
-    for (size_t i = 0; i < strlen(text_to_find); i++)
-    {
-        if (text_to_find[i] == '*' && text_to_find[i - 1] == '\\')
-        {
-            text_to_find[i - 1] = '*';
-            delete_from_array(text_to_find, i, strlen(text_to_find));
-        }
-        else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
-            star = true;
-    }
+    modifyArray(text_to_find, 1);
+
     if (c != '\n')
         gets(command);
     if (strstr(command, "-count"))
@@ -685,79 +685,14 @@ void replace()
 
     scanf("%s", command); //" --file skipped"
     getchar();
-    // if (!openFile(2, "r"))
-    // return;
-    openFile(2, "r");
+    if (!openFile(2, "r"))
+        return;
+    undoBackup();
 
     scanf("%s", command); // " --str1" skipped
-    getchar();
-    c = getchar();
-    if (c != '"')
-    {
-        text_to_find[0] = c;
-        i = 1;
-        while (true)
-        {
-            c = getchar();
-            if (c == ' ' || c == '\n')
-                break;
-            text_to_find[i] = c;
-            i++;
-        }
-        text_to_find[i] = '\0';
-    }
-    else if (c == '"')
-    {
-        while (true)
-        {
-            if (c == '"' && text_to_find[i - 1] != '\\')
-                break;
-            text_to_find[i] = c;
-            i++;
-        }
-        text_to_find[i] = '\0';
-    }
-    i = 0;
-    for (size_t i = 0; i < strlen(text_to_find); i++)
-    {
-        if (text_to_find[i] == '*' && text_to_find[i - 1] == '\\')
-        {
-            text_to_find[i - 1] = '*';
-            delete_from_array(text_to_find, i, strlen(text_to_find));
-        }
-        else if (text_to_find[i] == '*' && text_to_find[i - 1] != '\\')
-            star = true;
-    }
-
+    modifyArray(text_to_find, 1);
     scanf("%s", command); // " --str2" skipped
-    getchar();
-    c = getchar();
-    if (c != '"')
-    {
-        text_to_replace[0] = c;
-        i = 1;
-        while (true)
-        {
-            c = getchar();
-            if (c == ' ' || c == '\n')
-                break;
-            text_to_replace[i] = c;
-            i++;
-        }
-        text_to_replace[i] = '\0';
-    }
-    else if (c == '"')
-    {
-        while (true)
-        {
-            if (c == '"' && text_to_replace[i - 1] != '\\')
-                break;
-            text_to_replace[i] = c;
-            i++;
-        }
-        text_to_replace[i] = '\0';
-    }
-
+    modifyArray(text_to_replace, 2);
     i = 0;
     if (c != '\n')
     {
@@ -811,15 +746,10 @@ void replace()
         }
     }
     rewind(myFile);
-    // int first = byCharPosition[0];
-    // int last = first + strlen(text_to_replace);
-    // int difference = strlen(text_to_replace) - strlen(buffText);
-    // strcpy(tempBuffText, buffText);
-    // j = 0;
 
     switch (state)
     {
-    case 0: // does not work
+    case 0:
         if (flag)
         {
             i = 0;
@@ -1014,4 +944,109 @@ void grep()
     default:
         break;
     }
+}
+
+void undo()
+{
+    scanf("%s", command); // --file skipped
+    int i = 0;
+    getchar();
+    char c = getchar();
+
+    if (c == '/')
+    {
+        scanf("%s", address);
+        insert_to_array(address, '/', 0, strlen(address));
+    }
+
+    else if (c == '"')
+    {
+        while ((c = getchar()) != '"')
+        {
+            address[i] = c;
+            i++;
+        }
+    }
+    if (!access(address, F_OK))
+    {
+        remove(address);
+        SetFileAttributes(tempFileName3, FILE_ATTRIBUTE_NORMAL);
+        rename(tempFileName3, address);
+    }
+    else
+        printf("The file does not exist!\n");
+    memset(tempFileName3, 0, sizeof(tempFileName3));
+}
+
+void closing_pairs()
+{
+    char buffText[1000];
+    int i = 0, j = 0, k = 0, tabCounter = 0, spaceCounter;
+    bool flag = false, emptyContent;
+    scanf("%s", command);
+    getchar();
+    if (!openFile(2, "r"))
+        return;
+    undoBackup();
+
+    fgets(buffText, 1000, myFile);
+
+    for (size_t i = 0; i < strlen(buffText); i++) // delete all whitspaces
+    {
+        if (buffText[i] == '{' || buffText[i] == '}')
+        {
+            j = i;
+            while (buffText[--j] == ' ')
+                delete_from_array(buffText, j, strlen(buffText));
+
+            j += 2; // skip '{' or '}'
+            while (buffText[j] == ' ')
+                delete_from_array(buffText, j, strlen(buffText));
+            i = --j;
+        }
+    }
+
+    for (i; i < strlen(buffText); i++)
+    {
+        if (buffText[i] == '{')
+        {
+            tabCounter++;
+            if (!flag)
+                insert_to_array(buffText, ' ', i++, strlen(buffText));
+            insert_to_array(buffText, '\n', ++i, strlen(buffText));
+            for (j = ++i; j <= tabCounter * 4 + i; j++)
+                insert_to_array(buffText, ' ', j, strlen(buffText));
+
+            i += 4 * tabCounter;
+            if (buffText[i + 1] == '{')
+                flag = true;
+            else if (buffText[i + 1] == '}')
+                emptyContent = true;
+            else
+                flag = false;
+        }
+        if (buffText[i] == '}')
+        {
+            tabCounter--;
+            if (emptyContent)
+            {
+                for (k = i; k > i - 4; k--)
+                    delete_from_array(buffText, k - 1, strlen(buffText));
+                emptyContent = false;
+                i -= 4;
+            }
+            else
+            {
+                insert_to_array(buffText, '\n', i++, strlen(buffText));
+                for (j = i++; j < (tabCounter)*4 + i; j++)
+                    insert_to_array(buffText, ' ', j, strlen(buffText));
+                i += 4 * tabCounter;
+            }
+        }
+    }
+    fputs(buffText, myTempFile);
+    fclose(myFile);
+    fclose(myTempFile);
+    remove(tempFileName);
+    rename(tempFileName2, tempFileName);
 }

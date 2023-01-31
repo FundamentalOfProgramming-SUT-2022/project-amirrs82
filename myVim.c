@@ -9,7 +9,7 @@
 #include <string.h>
 #include <windows.h>
 
-char address[100], tempAddress[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100];
+char address[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100];
 FILE *myFile, *myTempFile;
 
 // void hidingFile
@@ -27,9 +27,10 @@ void cut();
 void paste();
 void find();
 void replace();
+void grep();
 void insert_to_array(char arr[], char c, int position, int size);
-int openFile(int n, char *mode);
 void delete_from_array(char arr[], int position, int size);
+int openFile(int n, char *mode);
 
 int main()
 {
@@ -37,7 +38,6 @@ int main()
     while ((strcmp(command, "exit")) && (strcmp(command, "quit")))
     {
         memset(address, 0, sizeof(address));
-        memset(tempAddress, 0, sizeof(tempAddress));
         memset(tempFileName, 0, sizeof(tempFileName));
         memset(tempFileName2, 0, sizeof(tempFileName2));
 
@@ -55,10 +55,12 @@ int main()
             cut();
         else if (!strcmp(command, "pastestr"))
             paste();
-        else if (!strcmp(command, "find"))
-            find();
-        else if (!strcmp(command, "replace"))
-            replace();
+        // else if (!strcmp(command, "find"))
+        //     find();
+        // else if (!strcmp(command, "replace"))
+        //     replace();
+        else if (!strcmp(command, "grep"))
+            grep();
         else
             printf("Wrong Command! Please try again\n");
         memset(command, 0, sizeof(command));
@@ -137,6 +139,7 @@ int openFile(int n, char *mode)
 void createFile()
 {
     FILE *myFile;
+    char tempAddress[100];
     int i;
     scanf("%s", command); // " --file skipped"
     getchar();            // space skipped
@@ -168,11 +171,13 @@ void createFile()
         tempAddress[i] = '\0';
         myFile = fopen(tempAddress, "w");
         fclose(myFile);
+        memset(tempAddress, 0, sizeof(tempAddress));
         return;
     }
     else
     {
         printf("The file already exists!\n");
+        memset(tempAddress, 0, sizeof(tempAddress));
         return;
     }
 }
@@ -878,4 +883,135 @@ void replace()
     fclose(myFile);
     remove(tempFileName);
     rename(tempFileName2, tempFileName);
+}
+
+void grep()
+{
+    int i = 0, j = 0, state = 0, at;
+    char buffText[1000], text_to_find[1000], fileName[100][1000], foundedText[100][1000], c;
+    bool flag = false;
+    // memset(byWordPosition, 0, sizeof(byWordPosition));
+    scanf("%s", command); // --str skipped or option
+
+    switch (command[1])
+    {
+    case 'c':
+        state = 1;
+        scanf("%s", command);
+        break;
+    case 'l':
+        state = 10;
+        scanf("%s", command);
+        break;
+    default:
+        break;
+    }
+    getchar();
+    c = getchar();
+    if (c != '"')
+    {
+        text_to_find[0] = c;
+        i = 1;
+        while (true)
+        {
+            c = getchar();
+            if (c == ' ' || c == '\n')
+                break;
+            text_to_find[i] = c;
+            i++;
+        }
+        text_to_find[i] = '\0';
+    }
+    else if (c == '"')
+    {
+        while ((c = getchar()) != '"')
+        {
+            if (c == '"' && text_to_find[i - 1] != '\\')
+                break;
+            text_to_find[i] = c;
+            i++;
+        }
+        text_to_find[i] = '\0';
+    }
+
+    scanf("%s", command); //--files skipped
+    j = 0;
+
+    while (true)
+    {
+        i = 0;
+        c = getchar();
+        if (c == '\n')
+            break;
+        else if (c == ' ')
+        {
+            c = getchar();
+            if (c == '/')
+            {
+                scanf("%s", address);
+                insert_to_array(address, c, 0, strlen(address));
+            }
+            else if (c == '"')
+            {
+                while ((c = getchar()) != '"')
+                {
+                    address[i] = c;
+                    i++;
+                }
+                address[i] = '\0';
+            }
+        }
+        if (!access(address, F_OK))
+        {
+            myFile = fopen(address, "r");
+            while (true)
+            {
+                fgets(buffText, 1000, myFile);
+                if (strstr(buffText, text_to_find))
+                {
+                    strcpy(fileName[j], address);
+                    strcpy(foundedText[j], buffText);
+                    flag = true;
+                    if (buffText[strlen(buffText) - 1] != '\n')
+                        insert_to_array(foundedText[j], '\n', strlen(buffText), strlen(buffText)); // add enter if there is not one
+                    j++;
+                }
+                if (feof(myFile))
+                    break;
+            }
+        }
+        else
+        {
+            printf("The file does not exist\n");
+            // return;
+        }
+    }
+    switch (state)
+    {
+    case 0:
+        if (flag)
+        {
+            for (size_t i = 0; i < j; i++)
+                printf("%s: %s", fileName[i], foundedText[i]);
+        }
+        else
+            printf("-1\n");
+        break;
+
+    case 1:
+        printf("%d\n", j);
+        break;
+    case 10:
+        if (flag)
+        {
+            for (size_t i = 0; i < j; i++)
+                printf("%s\n", fileName[i]);
+        }
+        else
+            printf("-1\n");
+        break;
+
+    default:
+        break;
+    }
 }

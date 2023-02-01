@@ -11,6 +11,7 @@
 
 char address[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100], tempFileName3[100], c;
 FILE *myFile, *myTempFile;
+bool star = false;
 
 void createFile();
 void insert();
@@ -24,6 +25,7 @@ void replace();
 void grep();
 void undo();
 void closing_pairs();
+void compare();
 void modifyArray(char arr[], int n);
 void insert_to_array(char arr[], char c, int position, int size);
 void delete_from_array(char arr[], int position, int size);
@@ -63,6 +65,8 @@ int main()
             undo();
         else if (!strcmp(command, "auto-indent"))
             closing_pairs();
+        else if (!strcmp(command, "compare"))
+            compare();
         else
             printf("Wrong Command! Please try again\n");
         scanf("%s", command);
@@ -148,15 +152,15 @@ void delete_from_array(char arr[], int position, int size)
 
 void undoBackup()
 {
-    char buffText[1000];
+    char text[1000];
     FILE *undoFile;
     strncpy(tempFileName3, address, strlen(address) - 4);
     strcat(tempFileName3, "____temp.txt");
     undoFile = fopen(tempFileName3, "w");
     while (true)
     {
-        fgets(buffText, 1000, myFile);
-        fputs(buffText, undoFile);
+        fgets(text, 1000, myFile);
+        fputs(text, undoFile);
         if (feof(myFile))
             break;
     }
@@ -168,6 +172,7 @@ void undoBackup()
 int openFile(int n, char *mode)
 {
     int i = 0;
+    getchar();
     char c = getchar();
 
     if (c == '/')
@@ -191,6 +196,9 @@ int openFile(int n, char *mode)
     case 0:
         switch (n)
         {
+        case 0:
+            myTempFile = fopen(address, mode); // for compare
+            break;
         case 1: // one file to open
             myFile = fopen(address, mode);
             break;
@@ -199,7 +207,7 @@ int openFile(int n, char *mode)
             strncpy(tempFileName2, address, strlen(address) - 4);
             strcat(tempFileName2, "__temp.txt");
             myFile = fopen(tempFileName, "r");
-            myTempFile = fopen(tempFileName2, "w+");
+            myTempFile = fopen(tempFileName2, "mode");
             break;
         default:
             break;
@@ -264,11 +272,11 @@ void createFile()
 void insert()
 {
     int line, position, i = 0, j = 0, currentLine = 1;
-    char buffText[1000], text[1000], c;
+    char text[1000], buffText[1000], c;
 
     scanf("%s", command);
-    getchar();
-    if (!openFile(2, "r"))
+
+    if (!openFile(2, "w+"))
         return;
     undoBackup();
 
@@ -308,17 +316,17 @@ void insert()
 
 void cat()
 {
-    char buffText[1000];
+    char text[1000];
     int i = 0;
     scanf("%s", command);
-    getchar();
+
     if (!openFile(1, "r"))
         return;
 
     while (true)
     {
-        fgets(buffText, 1000, myFile);
-        printf("%s", buffText);
+        fgets(text, 1000, myFile);
+        printf("%s", text);
         if (feof(myFile))
             break;
     }
@@ -327,11 +335,10 @@ void cat()
 
 void remove_()
 {
-    char buffText[1000], c;
+    char text[1000], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
     scanf("%s", command); // " --file" skipped
-    getchar();
-    if (!openFile(2, "r"))
+    if (!openFile(2, "w+"))
         return;
     undoBackup();
 
@@ -343,7 +350,7 @@ void remove_()
 
     while ((c = fgetc(myFile)) != EOF)
     {
-        buffText[i] = c;
+        text[i] = c;
 
         if (line == currentLine && flag)
         {
@@ -355,24 +362,24 @@ void remove_()
             currentLine++;
         i++;
     }
-    buffText[i] = '\0';
+    text[i] = '\0';
     scanf("%s", command); // -f or -b
     if (strstr(command, "-f"))
     {
         for (size_t k = 0; k < length; k++)
-            delete_from_array(buffText, exactPosition, strlen(buffText));
+            delete_from_array(text, exactPosition, strlen(text));
     }
     else if (strstr(command, "-b"))
     {
         for (size_t k = 0; k < length; k++)
         {
-            delete_from_array(buffText, exactPosition, strlen(buffText));
+            delete_from_array(text, exactPosition, strlen(text));
             exactPosition--;
         }
     }
 
-    for (size_t i = 0; i < strlen(buffText); i++)
-        fputc(buffText[i], myTempFile);
+    for (size_t i = 0; i < strlen(text); i++)
+        fputc(text[i], myTempFile);
 
     fclose(myTempFile);
     fclose(myFile);
@@ -382,10 +389,9 @@ void remove_()
 
 void copy()
 {
-    char buffText[1000], c;
+    char text[1000], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
     scanf("%s", command); // "--file" skipped
-    getchar();            // space skipped
     if (!openFile(1, "r"))
         return;
 
@@ -396,7 +402,7 @@ void copy()
     scanf("%d", &length);
     while ((c = fgetc(myFile)) != EOF)
     {
-        buffText[i] = c;
+        text[i] = c;
         if (line == currentLine && flag)
         {
             exactPosition = i + position;
@@ -406,18 +412,18 @@ void copy()
         if (c == '\n')
             currentLine++;
     }
-    buffText[i] = '\0';
+    text[i] = '\0';
 
     scanf("%s", command); // -f or -b
     if (strstr(command, "-f"))
     {
         for (i = exactPosition; i < exactPosition + length; i++, j++)
-            clipboard[j] = buffText[i];
+            clipboard[j] = text[i];
     }
     else if (strstr(command, "-b"))
     {
         for (i = exactPosition - length; i < exactPosition; i++, j++)
-            clipboard[j] = buffText[i];
+            clipboard[j] = text[i];
     }
     clipboard[j] = '\0';
     fclose(myFile);
@@ -425,11 +431,10 @@ void copy()
 
 void cut()
 {
-    char buffText[1000], c;
+    char text[1000], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
     scanf("%s", command); //--file skipped
-    getchar();
-    if (!openFile(2, "r"))
+    if (!openFile(2, "w+"))
         return;
     undoBackup();
 
@@ -441,7 +446,7 @@ void cut()
 
     while ((c = fgetc(myFile)) != EOF)
     {
-        buffText[i] = c;
+        text[i] = c;
         if (line == currentLine && flag)
         {
             exactPosition = i + position;
@@ -451,37 +456,37 @@ void cut()
         if (c == '\n')
             currentLine++;
     }
-    buffText[i] = '\0';
+    text[i] = '\0';
 
     scanf("%s", command); // -f or -b
 
     if (strstr(command, "-f"))
     {
         for (i = exactPosition; i < exactPosition + length; i++, j++)
-            clipboard[j] = buffText[i]; // copy
+            clipboard[j] = text[i]; // copy
         clipboard[j] = '\0';
 
         for (size_t i = 0; i < length; i++)
-            delete_from_array(buffText, exactPosition, strlen(buffText));
+            delete_from_array(text, exactPosition, strlen(text));
     }
 
     else if (strstr(command, "-b"))
     {
         for (i = exactPosition - length; i < exactPosition; i++, j++)
-            clipboard[j] = buffText[i]; // copy
+            clipboard[j] = text[i]; // copy
         clipboard[j] = '\0';
 
         for (size_t i = 0; i < length; i++)
         {
-            delete_from_array(buffText, exactPosition, strlen(buffText));
+            delete_from_array(text, exactPosition, strlen(text));
             exactPosition--;
         }
     }
     else
         printf("Wrong command, Please try again\n");
 
-    for (size_t i = 0; i < strlen(buffText); i++)
-        fputc(buffText[i], myTempFile);
+    for (size_t i = 0; i < strlen(text); i++)
+        fputc(text[i], myTempFile);
 
     fclose(myTempFile);
     fclose(myFile);
@@ -492,10 +497,10 @@ void cut()
 void paste()
 {
     int line, position, i = 0, j = 0, currentLine = 1;
-    char buffText[1000], c;
+    char text[1000], c;
     scanf("%s", command); //--file skipped
-    getchar();
-    if (!openFile(2, "r"))
+
+    if (!openFile(2, "w+"))
         return;
     undoBackup();
 
@@ -504,20 +509,20 @@ void paste()
 
     while (true)
     {
-        fgets(buffText, 1000, myFile);
+        fgets(text, 1000, myFile);
         if (line == currentLine)
         {
-            for (size_t i = 0; i < strlen(buffText); i++)
+            for (size_t i = 0; i < strlen(text); i++)
             {
                 if (i == position)
                     fputs(clipboard, myTempFile);
-                fputc(buffText[i], myTempFile);
+                fputc(text[i], myTempFile);
             }
-            if (strlen(buffText) == position)
+            if (strlen(text) == position)
                 fputs(clipboard, myTempFile);
         }
         else
-            fputs(buffText, myTempFile);
+            fputs(text, myTempFile);
 
         currentLine++;
 
@@ -533,16 +538,15 @@ void paste()
 void find()
 {
     int i = 0, j = 0, state = 0, at;
-    char buffText[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], *stringPtr;
+    char text[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], *stringPtr;
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
     memset(byCharPosition, 0, sizeof(byCharPosition));
 
     scanf("%s", command); // "--file" skipped
-    getchar();
     if (!openFile(1, "r"))
         return;
-    // openFile(1, "r");
+
     scanf("%s", command); // " --str" skipped
 
     modifyArray(text_to_find, 1);
@@ -569,7 +573,7 @@ void find()
         state += 1000;
     // 1, 10 ,100 ,1000 , 110, 1100 are possible states
 
-    fgets(buffText, 1000, myFile);
+    fgets(text, 1000, myFile);
     printf("%s ", text_to_find);
 
     if (star)
@@ -579,20 +583,20 @@ void find()
     else
     {
         j = 0;
-        for (size_t i = 0; i < strlen(buffText); i++)
+        for (size_t i = 0; i < strlen(text); i++)
         {
-            if (strstr(buffText + i, text_to_find))
+            if (strstr(text + i, text_to_find))
             {
 
-                byCharPosition[j] = strstr(buffText + i, text_to_find);
-                byCharPosition[j] = byCharPosition[j] - buffText;
+                byCharPosition[j] = strstr(text + i, text_to_find);
+                byCharPosition[j] = byCharPosition[j] - text;
 
                 if (byCharPosition[j] != 0 && i == 0)
                     i = byCharPosition[j];
 
                 for (int k = byCharPosition[j]; k > -1; k--)
                 {
-                    if (buffText[k] == ' ' && buffText[k - 1] != ' ')
+                    if (text[k] == ' ' && text[k - 1] != ' ')
                         byWordPosition[j]++;
                 }
 
@@ -679,13 +683,13 @@ void find()
 void replace()
 {
     int i = 0, j = 0, state = 0, at;
-    char buffText[1000], tempBuffText[1000], text_to_find[1000], text_to_replace[1000], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
+    char text[1000], temptext[1000], text_to_find[1000], text_to_replace[1000], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
 
     scanf("%s", command); //" --file skipped"
-    getchar();
-    if (!openFile(2, "r"))
+
+    if (!openFile(2, "w+"))
         return;
     undoBackup();
 
@@ -715,26 +719,26 @@ void replace()
     }
     j = 0;
 
-    fgets(buffText, 1000, myFile);
+    fgets(text, 1000, myFile);
     if (star)
     {
     }
     else
     {
-        for (size_t i = 0; i < strlen(buffText); i++)
+        for (size_t i = 0; i < strlen(text); i++)
         {
-            if (strstr(buffText + i, text_to_find))
+            if (strstr(text + i, text_to_find))
             {
 
-                byCharPosition[j] = strstr(buffText + i, text_to_find);
-                byCharPosition[j] = byCharPosition[j] - buffText;
+                byCharPosition[j] = strstr(text + i, text_to_find);
+                byCharPosition[j] = byCharPosition[j] - text;
 
-                if (byCharPosition[j] - buffText != 0 && i == 0)
+                if (byCharPosition[j] - text != 0 && i == 0)
                     i = byCharPosition[j];
 
                 for (int k = byCharPosition[j]; k > -1; k--)
                 {
-                    if (buffText[k] == ' ' && buffText[k - 1] != ' ')
+                    if (text[k] == ' ' && text[k - 1] != ' ')
                         byWordPosition[j]++;
                 }
 
@@ -818,10 +822,9 @@ void replace()
 void grep()
 {
     int i = 0, j = 0, state = 0, at;
-    char buffText[1000], text_to_find[1000], fileName[100][1000], foundedText[100][1000], c;
+    char text[1000], text_to_find[1000], fileName[100][1000], foundedText[100][1000], c;
     bool flag = false;
-    // memset(byWordPosition, 0, sizeof(byWordPosition));
-    scanf("%s", command); // --str skipped or option
+    scanf("%s", command); // --str or option skipped
 
     switch (command[1])
     {
@@ -836,33 +839,8 @@ void grep()
     default:
         break;
     }
-    getchar();
-    c = getchar();
-    if (c != '"')
-    {
-        text_to_find[0] = c;
-        i = 1;
-        while (true)
-        {
-            c = getchar();
-            if (c == ' ' || c == '\n')
-                break;
-            text_to_find[i] = c;
-            i++;
-        }
-        text_to_find[i] = '\0';
-    }
-    else if (c == '"')
-    {
-        while ((c = getchar()) != '"')
-        {
-            if (c == '"' && text_to_find[i - 1] != '\\')
-                break;
-            text_to_find[i] = c;
-            i++;
-        }
-        text_to_find[i] = '\0';
-    }
+
+    modifyArray(text_to_find, 1);
 
     scanf("%s", command); //--files skipped
     j = 0;
@@ -896,14 +874,14 @@ void grep()
             myFile = fopen(address, "r");
             while (true)
             {
-                fgets(buffText, 1000, myFile);
-                if (strstr(buffText, text_to_find))
+                fgets(text, 1000, myFile);
+                if (strstr(text, text_to_find))
                 {
                     strcpy(fileName[j], address);
-                    strcpy(foundedText[j], buffText);
+                    strcpy(foundedText[j], text);
                     flag = true;
-                    if (buffText[strlen(buffText) - 1] != '\n')
-                        insert_to_array(foundedText[j], '\n', strlen(buffText), strlen(buffText)); // add enter if there is not one
+                    // if (text[strlen(text) - 1] != '\n')
+                    //     insert_to_array(foundedText[j], '\n', strlen(text), strlen(text)); // add enter if there is not one
                     j++;
                 }
                 if (feof(myFile))
@@ -923,6 +901,7 @@ void grep()
         {
             for (size_t i = 0; i < j; i++)
                 printf("%s: %s", fileName[i], foundedText[i]);
+            printf("\n");
         }
         else
             printf("-1\n");
@@ -935,7 +914,11 @@ void grep()
         if (flag)
         {
             for (size_t i = 0; i < j; i++)
+            {
                 printf("%s\n", fileName[i]);
+                while (!strcmp(fileName[i], fileName[i + 1]))
+                    i++;
+            }
         }
         else
             printf("-1\n");
@@ -980,73 +963,183 @@ void undo()
 
 void closing_pairs()
 {
-    char buffText[1000];
+    char text[1000];
     int i = 0, j = 0, k = 0, tabCounter = 0, spaceCounter;
     bool flag = false, emptyContent;
     scanf("%s", command);
     getchar();
-    if (!openFile(2, "r"))
+    if (!openFile(2, "w+"))
         return;
     undoBackup();
 
-    fgets(buffText, 1000, myFile);
+    fgets(text, 1000, myFile);
 
-    for (size_t i = 0; i < strlen(buffText); i++) // delete all whitspaces
+    for (size_t i = 0; i < strlen(text); i++) // delete all whitspaces
     {
-        if (buffText[i] == '{' || buffText[i] == '}')
+        if (text[i] == '{' || text[i] == '}')
         {
             j = i;
-            while (buffText[--j] == ' ')
-                delete_from_array(buffText, j, strlen(buffText));
+            while (text[--j] == ' ')
+                delete_from_array(text, j, strlen(text));
 
             j += 2; // skip '{' or '}'
-            while (buffText[j] == ' ')
-                delete_from_array(buffText, j, strlen(buffText));
+            while (text[j] == ' ')
+                delete_from_array(text, j, strlen(text));
             i = --j;
         }
     }
 
-    for (i; i < strlen(buffText); i++)
+    for (i; i < strlen(text); i++)
     {
-        if (buffText[i] == '{')
+        if (text[i] == '{')
         {
             tabCounter++;
             if (!flag)
-                insert_to_array(buffText, ' ', i++, strlen(buffText));
-            insert_to_array(buffText, '\n', ++i, strlen(buffText));
+                insert_to_array(text, ' ', i++, strlen(text));
+            insert_to_array(text, '\n', ++i, strlen(text));
             for (j = ++i; j <= tabCounter * 4 + i; j++)
-                insert_to_array(buffText, ' ', j, strlen(buffText));
+                insert_to_array(text, ' ', j, strlen(text));
 
             i += 4 * tabCounter;
-            if (buffText[i + 1] == '{')
+            if (text[i + 1] == '{')
                 flag = true;
-            else if (buffText[i + 1] == '}')
+            else if (text[i + 1] == '}')
                 emptyContent = true;
             else
                 flag = false;
         }
-        if (buffText[i] == '}')
+        if (text[i] == '}')
         {
             tabCounter--;
             if (emptyContent)
             {
                 for (k = i; k > i - 4; k--)
-                    delete_from_array(buffText, k - 1, strlen(buffText));
+                    delete_from_array(text, k - 1, strlen(text));
                 emptyContent = false;
                 i -= 4;
             }
             else
             {
-                insert_to_array(buffText, '\n', i++, strlen(buffText));
+                insert_to_array(text, '\n', i++, strlen(text));
                 for (j = i++; j < (tabCounter)*4 + i; j++)
-                    insert_to_array(buffText, ' ', j, strlen(buffText));
+                    insert_to_array(text, ' ', j, strlen(text));
                 i += 4 * tabCounter;
             }
         }
     }
-    fputs(buffText, myTempFile);
+    fputs(text, myTempFile);
     fclose(myFile);
     fclose(myTempFile);
     remove(tempFileName);
     rename(tempFileName2, tempFileName);
+}
+
+void compare()
+{
+    char text1[100][1000], text2[100][1000], text[1000];
+    int i = 1, end1, end2, state, file_1_line = 0, file_2_line;
+    bool different[100] = {false};
+
+    if (!openFile(1, "r"))
+        return;
+
+    if (!openFile(0, "r"))
+        return;
+
+    while (true)
+    {
+        fgets(text1[i], 1000, myFile);
+        fgets(text2[i], 1000, myTempFile);
+        if (strcmp(text1[i], text2[i]))
+            different[i] = true;
+        i++;
+
+        if (feof(myFile) && feof(myTempFile)) // equal lines
+        {
+            state = 0;
+            break;
+        }
+
+        if (!feof(myFile) && feof(myTempFile)) // first file has more lines
+        {
+            state = 1;
+            end2 = i - 1;
+            break;
+        }
+
+        if (feof(myFile) && !feof(myTempFile)) // second file has more lines
+        {
+            state = 10;
+            end1 = i - 1;
+            break;
+        }
+    }
+    switch (state)
+    {
+    case 0:
+        for (size_t j = 1; j < i; j++)
+        {
+            if (different[j])
+            {
+                printf("========== #%d ==========", j);
+                printf("%s%s", text1[j], text2[j]);
+            }
+        }
+        printf("\n");
+        break;
+    case 1:
+        for (size_t j = 1; j <= end2; j++)
+        {
+            if (different[j])
+            {
+                printf("========== #%d ==========\n", j);
+                printf("%s%s", text1[j], text2[j]);
+            }
+        }
+        printf("\n");
+        while (true)
+        {
+            fgets(text1[i++], 1000, myFile);
+            if (feof(myFile))
+                break;
+        }
+        i--;
+        for (size_t j = end2 + 1; j <= i; j++)
+        {
+            printf("<<<<<<<<<< #%d - #%d <<<<<<<<<<\n", j, i);
+            printf("%s", text1[j]);
+        }
+        printf("\n");
+
+        break;
+    case 10:
+        for (size_t j = 1; j <= end1; j++)
+        {
+            if (different[j])
+            {
+                printf("========== #%d ==========", j);
+                printf("%s%s", text1[j], text2[j]);
+            }
+        }
+        printf("\n");
+        while (true)
+        {
+            fgets(text2[i++], 1000, myTempFile);
+            if (feof(myTempFile))
+                break;
+        }
+        i--;
+        for (size_t j = end1 + 1; j <= i; j++)
+        {
+            printf(">>>>>>>>>> #%d - #%d >>>>>>>>>>", j, i);
+            printf("%s", text2[j]);
+        }
+        printf("\n");
+        break;
+
+    default:
+        break;
+    }
+    fclose(myFile);
+    fclose(myTempFile);
 }

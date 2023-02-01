@@ -11,7 +11,6 @@
 
 char address[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100], tempFileName3[100], c;
 FILE *myFile, *myTempFile;
-bool star = false;
 
 void createFile();
 void insert();
@@ -26,7 +25,8 @@ void grep();
 void undo();
 void closing_pairs();
 void compare();
-void modifyArray(char arr[], int n);
+void tree();
+int modifyArray(char arr[], int n);
 void insert_to_array(char arr[], char c, int position, int size);
 void delete_from_array(char arr[], int position, int size);
 void undoBackup();
@@ -67,14 +67,17 @@ int main()
             closing_pairs();
         else if (!strcmp(command, "compare"))
             compare();
+        // else if (!strcmp(command, "tree"))
+        //     tree();
         else
             printf("Wrong Command! Please try again\n");
         scanf("%s", command);
     }
 }
 
-void modifyArray(char arr[], int n)
+int modifyArray(char arr[], int n)
 {
+    bool star = false;
     int i = 0;
     getchar();
     c = getchar();
@@ -106,6 +109,8 @@ void modifyArray(char arr[], int n)
 
     for (size_t i = 0; i < strlen(arr); i++)
     {
+        if (arr[i] == '*' && arr[i - 1] != '\\')
+            star = true;
         if (arr[i] == '\\')
         {
             if (arr[i + 1] == 'n' && arr[i - 1] != '\\')
@@ -130,14 +135,14 @@ void modifyArray(char arr[], int n)
             }
         }
     }
+    return star;
 }
 
 void insert_to_array(char arr[], char c, int position, int size)
 {
     for (int i = size; i >= position; i--)
-    {
         arr[i] = arr[i - 1];
-    }
+
     arr[position] = c;
     arr[size + 1] = '\0';
 }
@@ -188,6 +193,7 @@ int openFile(int n, char *mode)
             address[i] = c;
             i++;
         }
+        address[i] = '\0';
     }
 
     int fileAccess = access(address, F_OK);
@@ -207,7 +213,7 @@ int openFile(int n, char *mode)
             strncpy(tempFileName2, address, strlen(address) - 4);
             strcat(tempFileName2, "__temp.txt");
             myFile = fopen(tempFileName, "r");
-            myTempFile = fopen(tempFileName2, "mode");
+            myTempFile = fopen(tempFileName2, mode);
             break;
         default:
             break;
@@ -477,10 +483,7 @@ void cut()
         clipboard[j] = '\0';
 
         for (size_t i = 0; i < length; i++)
-        {
-            delete_from_array(text, exactPosition, strlen(text));
-            exactPosition--;
-        }
+            delete_from_array(text, exactPosition--, strlen(text));
     }
     else
         printf("Wrong command, Please try again\n");
@@ -549,7 +552,8 @@ void find()
 
     scanf("%s", command); // " --str" skipped
 
-    modifyArray(text_to_find, 1);
+    if (modifyArray(text_to_find, 1))
+        star = true;
 
     if (c != '\n')
         gets(command);
@@ -694,7 +698,8 @@ void replace()
     undoBackup();
 
     scanf("%s", command); // " --str1" skipped
-    modifyArray(text_to_find, 1);
+    if (modifyArray(text_to_find, 1))
+        star = true;
     scanf("%s", command); // " --str2" skipped
     modifyArray(text_to_replace, 2);
     i = 0;
@@ -966,8 +971,6 @@ void closing_pairs()
     char text[1000];
     int i = 0, j = 0, k = 0, tabCounter = 0, spaceCounter;
     bool flag = false, emptyContent;
-    scanf("%s", command);
-    getchar();
     if (!openFile(2, "w+"))
         return;
     undoBackup();
@@ -991,47 +994,65 @@ void closing_pairs()
 
     for (i; i < strlen(text); i++)
     {
-        if (text[i] == '{')
+        for (i; i < strlen(text); i++)
         {
-            tabCounter++;
-            if (!flag)
-                insert_to_array(text, ' ', i++, strlen(text));
-            insert_to_array(text, '\n', ++i, strlen(text));
-            for (j = ++i; j <= tabCounter * 4 + i; j++)
-                insert_to_array(text, ' ', j, strlen(text));
-
-            i += 4 * tabCounter;
-            if (text[i + 1] == '{')
-                flag = true;
-            else if (text[i + 1] == '}')
-                emptyContent = true;
-            else
-                flag = false;
-        }
-        if (text[i] == '}')
-        {
-            tabCounter--;
-            if (emptyContent)
+            if (text[i] == '{')
             {
-                for (k = i; k > i - 4; k--)
-                    delete_from_array(text, k - 1, strlen(text));
-                emptyContent = false;
-                i -= 4;
-            }
-            else
-            {
-                insert_to_array(text, '\n', i++, strlen(text));
-                for (j = i++; j < (tabCounter)*4 + i; j++)
+                tabCounter++;
+                if (text[i - 1] == '}')
+                {
+                    insert_to_array(text, '\n', i++, strlen(text));
+                    for (j = i; j < i + (tabCounter - 1) * 4; j++)
+                        insert_to_array(text, ' ', j, strlen(text));
+                    i = j;
+                }
+                if (!flag)
+                    insert_to_array(text, ' ', i++, strlen(text));
+                insert_to_array(text, '\n', ++i, strlen(text));
+                for (j = ++i; j <= tabCounter * 4 + i; j++)
                     insert_to_array(text, ' ', j, strlen(text));
+
                 i += 4 * tabCounter;
+                if (text[i + 1] == '{')
+                    flag = true;
+                else
+                    flag = false;
+                if (text[i + 1] == '}')
+                    emptyContent = true;
+                spaceCounter = 0;
+            }
+            if (text[i] == '}')
+            {
+                tabCounter--;
+                if (emptyContent)
+                {
+                    for (k = i; k > i - 4; k--)
+                        delete_from_array(text, k - 1, strlen(text));
+                    emptyContent = false;
+                    i -= 4;
+                }
+                else
+                {
+                    insert_to_array(text, '\n', i++, strlen(text));
+                    for (j = i++; j < (tabCounter)*4 + i; j++)
+                        insert_to_array(text, ' ', j, strlen(text));
+                    i += 4 * tabCounter;
+                }
+                if (text[i + 1] != '{' && text[i + 1] != '}')
+                {
+                    insert_to_array(text, '\n', ++i, strlen(text));
+                    for (j = ++i; j <= (tabCounter)*4 + i; j++)
+                        insert_to_array(text, ' ', j, strlen(text));
+                    i += 4 * tabCounter;
+                }
             }
         }
+        fputs(text, myTempFile);
+        fclose(myFile);
+        fclose(myTempFile);
+        remove(tempFileName);
+        rename(tempFileName2, tempFileName);
     }
-    fputs(text, myTempFile);
-    fclose(myFile);
-    fclose(myTempFile);
-    remove(tempFileName);
-    rename(tempFileName2, tempFileName);
 }
 
 void compare()
@@ -1143,3 +1164,7 @@ void compare()
     fclose(myFile);
     fclose(myTempFile);
 }
+
+// void tree()
+// {
+// }

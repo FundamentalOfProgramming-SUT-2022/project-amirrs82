@@ -9,8 +9,10 @@
 #include <string.h>
 #include <windows.h>
 
-char address[100], command[100], clipboard[1000], tempFileName[100], tempFileName2[100], tempFileName3[100], c;
-FILE *myFile, *myTempFile;
+char address[100], command[100], clipboard[1000], undoFileAddress[100][100], fileName[100], fileName2[100], armanText[100][1000], c;
+FILE *myFile, *myTempFile, *undoFile[100];
+int undoFileCounter = 0, armanCounter = 0;
+bool arman = false;
 
 void createFile();
 void insert();
@@ -19,7 +21,7 @@ void remove_();
 void copy();
 void cut();
 void paste();
-void find();
+void find(bool replace);
 void replace();
 void grep();
 void undo();
@@ -38,8 +40,8 @@ int main()
     while ((strcmp(command, "exit")) && (strcmp(command, "quit")))
     {
         memset(address, 0, sizeof(address));
-        memset(tempFileName, 0, sizeof(tempFileName));
-        memset(tempFileName2, 0, sizeof(tempFileName2));
+        memset(fileName, 0, sizeof(fileName));
+        memset(fileName2, 0, sizeof(fileName2));
 
         if (!strcmp(command, "createfile"))
             createFile();
@@ -56,7 +58,7 @@ int main()
         else if (!strcmp(command, "pastestr"))
             paste();
         else if (!strcmp(command, "find"))
-            find();
+            find(false);
         else if (!strcmp(command, "replace"))
             replace();
         else if (!strcmp(command, "grep"))
@@ -67,11 +69,15 @@ int main()
             closing_pairs();
         else if (!strcmp(command, "compare"))
             compare();
-        // else if (!strcmp(command, "tree"))
-        //     tree();
+        else if (!strcmp(command, "tree"))
+            tree();
         else
+        {
             printf("Wrong Command! Please try again\n");
+            gets(command);
+        }
         scanf("%s", command);
+        arman = false;
     }
 }
 
@@ -141,8 +147,9 @@ int modifyArray(char arr[], int n)
 void insert_to_array(char arr[], char c, int position, int size)
 {
     for (int i = size; i >= position; i--)
+    {
         arr[i] = arr[i - 1];
-
+    }
     arr[position] = c;
     arr[size + 1] = '\0';
 }
@@ -158,20 +165,21 @@ void delete_from_array(char arr[], int position, int size)
 void undoBackup()
 {
     char text[1000];
-    FILE *undoFile;
-    strncpy(tempFileName3, address, strlen(address) - 4);
-    strcat(tempFileName3, "____temp.txt");
-    undoFile = fopen(tempFileName3, "w");
+    strcpy(undoFileAddress[undoFileCounter], address);
+    strcat(undoFileAddress[undoFileCounter], "____undo.txt");
+    remove(undoFileAddress[undoFileCounter]);
+    undoFile[undoFileCounter] = fopen(undoFileAddress[undoFileCounter], "w");
     while (true)
     {
         fgets(text, 1000, myFile);
-        fputs(text, undoFile);
+        fputs(text, undoFile[undoFileCounter]);
         if (feof(myFile))
             break;
     }
     rewind(myFile);
-    SetFileAttributes(tempFileName3, FILE_ATTRIBUTE_HIDDEN);
-    fclose(undoFile);
+    SetFileAttributes(undoFileAddress[undoFileCounter], FILE_ATTRIBUTE_HIDDEN);
+    fclose(undoFile[undoFileCounter]);
+    undoFileCounter++;
 }
 
 int openFile(int n, char *mode)
@@ -209,11 +217,11 @@ int openFile(int n, char *mode)
             myFile = fopen(address, mode);
             break;
         case 2: // two files to open
-            strcpy(tempFileName, address);
-            strncpy(tempFileName2, address, strlen(address) - 4);
-            strcat(tempFileName2, "__temp.txt");
-            myFile = fopen(tempFileName, "r");
-            myTempFile = fopen(tempFileName2, mode);
+            strcpy(fileName, address);
+            strncpy(fileName2, address, strlen(address) - 4);
+            strcat(fileName2, "__temp.txt");
+            myFile = fopen(fileName, "r");
+            myTempFile = fopen(fileName2, mode);
             break;
         default:
             break;
@@ -279,8 +287,9 @@ void insert()
 {
     int line, position, i = 0, j = 0, currentLine = 1;
     char text[1000], buffText[1000], c;
-
-    scanf("%s", command);
+    memset(text, 0, sizeof(text));
+    memset(text, 0, sizeof(buffText));
+    scanf("%s", command); // file or arman skipped
 
     if (!openFile(2, "w+"))
         return;
@@ -316,27 +325,36 @@ void insert()
     }
     fclose(myTempFile);
     fclose(myFile);
-    remove(tempFileName);
-    rename(tempFileName2, tempFileName);
+    remove(fileName);
+    rename(fileName2, fileName);
 }
 
 void cat()
 {
     char text[1000];
     int i = 0;
-    scanf("%s", command);
+    scanf("%s", command); // arman or --file skipped
+    if (!strcmp(command, "=D"))
+        arman = true;
 
     if (!openFile(1, "r"))
         return;
-
     while (true)
     {
         fgets(text, 1000, myFile);
-        printf("%s", text);
+        if (arman)
+        {
+            strcpy(armanText[armanCounter], text);
+            armanCounter++;
+        }
+        else
+            printf("%s", text);
+
         if (feof(myFile))
             break;
     }
-    printf("\n");
+    if (!arman)
+        printf("\n");
 }
 
 void remove_()
@@ -389,8 +407,8 @@ void remove_()
 
     fclose(myTempFile);
     fclose(myFile);
-    remove(tempFileName);
-    rename(tempFileName2, tempFileName);
+    remove(fileName);
+    rename(fileName2, fileName);
 }
 
 void copy()
@@ -493,8 +511,8 @@ void cut()
 
     fclose(myTempFile);
     fclose(myFile);
-    remove(tempFileName);
-    rename(tempFileName2, tempFileName);
+    remove(fileName);
+    rename(fileName2, fileName);
 }
 
 void paste()
@@ -534,14 +552,14 @@ void paste()
     }
     fclose(myTempFile);
     fclose(myFile);
-    remove(tempFileName);
-    rename(tempFileName2, tempFileName);
+    remove(fileName);
+    rename(fileName2, fileName);
 }
 
-void find()
+void find(bool replace) // wildcard
 {
-    int i = 0, j = 0, state = 0, at;
-    char text[1000], text_to_find[1000], *byWordPosition[100], *byCharPosition[100], number[10], *stringPtr;
+    int i = 0, j = 0, k = 0, state = 0, byWordPosition[100], byCharPosition[100], end[100], at;
+    char text[1000], text_to_find[1000], number[10], *stringPtr, *tokenPtr1, *tokenPtr2;
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
     memset(byCharPosition, 0, sizeof(byCharPosition));
@@ -578,22 +596,83 @@ void find()
     // 1, 10 ,100 ,1000 , 110, 1100 are possible states
 
     fgets(text, 1000, myFile);
-    printf("%s ", text_to_find);
 
     if (star)
     {
-        // if (text_to_find[0] == '*')
+        if (text_to_find[0] == '*')
+        {
+            delete_from_array(text_to_find, 0, strlen(text_to_find));
+            for (i = 0; i < strlen(text); i++)
+            {
+                while (strncmp(text_to_find, text + i, strlen(text_to_find)) && i < strlen(text))
+                    i++;
+                if (i < strlen(text))
+                {
+                    i += strlen(text_to_find);
+                    end[j] = i;
+                    while (text[i] != ' ' && text[i] == '\0')
+                        i++;
+
+                    k = end[j] - strlen(text_to_find);
+
+                    while (true)
+                    {
+                        if (text[k - 1] == ' ' || k == 0)
+                            break;
+                        k--;
+                    }
+                    byCharPosition[j] = k;
+                    for (int k = byCharPosition[j]; k > -1; k--)
+                    {
+                        if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                            byWordPosition[j]++;
+                    }
+                    flag = true;
+                    j++;
+                }
+            }
+        }
+
+        else if (text_to_find[strlen(text_to_find) - 1] == '*')
+        {
+            delete_from_array(text_to_find, strlen(text_to_find) - 1, strlen(text_to_find));
+            for (i = 0; i < strlen(text); i++)
+            {
+                if (!strncmp(text_to_find, text + i, strlen(text_to_find)))
+                {
+                    byCharPosition[j] = i;
+
+                    for (int k = byCharPosition[j]; k > -1; k--)
+                    {
+                        if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                            byWordPosition[j]++;
+                    }
+
+                    i = byCharPosition[j] + strlen(text_to_find);
+                    while (text[i] != ' ' && i <= strlen(text) - 1)
+                        i++;
+                    end[j] = i;
+                    flag = true;
+                    j++;
+                }
+            }
+        }
+
+        else
+        {
+            // tokenPtr1 = strtok(text_to_find, '*');
+            // tokenPtr2 = strtok(NULL, '*');
+        }
     }
     else
     {
-        j = 0;
         for (size_t i = 0; i < strlen(text); i++)
         {
             if (strstr(text + i, text_to_find))
             {
 
-                byCharPosition[j] = strstr(text + i, text_to_find);
-                byCharPosition[j] = byCharPosition[j] - text;
+                byCharPosition[j] = strstr(text + i, text_to_find) - text;
+                end[j] = byCharPosition[j] + strlen(text_to_find);
 
                 if (byCharPosition[j] != 0 && i == 0)
                     i = byCharPosition[j];
@@ -610,84 +689,85 @@ void find()
                 flag = true; // founded
             }
         }
+        rewind(myFile);
+    }
 
-        switch (state)
+    switch (state)
+    {
+    case 0: // no options
+        if (flag)
+            printf("%d\n", byCharPosition[0]);
+        else
+            printf("-1\n");
+        break;
+    case 1: // count
+        printf("%d\n", j);
+        j = 0;
+        break;
+    case 10: // at
+        if (at > j)
+            printf("-1\n");
+        else if (!at)
+            printf("Invalid Position\n");
+        else
+            printf("%d\n", byCharPosition[at - 1]);
+        break;
+    case 100: // byword
+        if (flag)
+            printf("%d\n", byWordPosition[0]);
+        else
+            printf("-1\n");
+        break;
+    case 1000: // all
+        if (flag)
         {
-        case 0: // no options
-            if (flag)
-                printf("%d\n", byCharPosition[0]);
-            else
-                printf("-1\n");
-            break;
-        case 1: // count
-            printf("%d\n", j);
-            j = 0;
-            break;
-        case 10: // at
-            if (at > j)
-                printf("-1\n");
-            else if (!at)
-                printf("Invalid Position\n");
-            else
-                printf("%d\n", byCharPosition[at - 1]);
-            break;
-        case 100: // byword
-            if (flag)
-                printf("%d\n", byWordPosition[0] + 1);
-            else
-                printf("-1\n");
-            break;
-        case 1000: // all
-            if (flag)
+            for (size_t i = 0; i < j; i++)
             {
-                for (size_t i = 0; i < j; i++)
-                {
-                    if (i)
-                        printf(", %d", byCharPosition[i]);
-                    else
-                        printf("%d", byCharPosition[i]);
-                }
-                printf("\n");
+                if (i)
+                    printf(", %d", byCharPosition[i]);
+                else
+                    printf("%d", byCharPosition[i]);
             }
-            else
-                printf("-1\n");
-            break;
-        case 110: // at & byword
-            if (at > j)
-                printf("-1\n");
-            else if (!at)
-                printf("Invalid Position\n");
-            else
-                printf("%d\n", byWordPosition[at - 1] + 1);
-            break;
-        case 1100: // byword & all
-            if (flag)
-            {
-                for (size_t i = 0; i < j; i++)
-                {
-                    if (i)
-                        printf(", %d", byWordPosition[i] + 1);
-                    else
-                        printf("%d", byWordPosition[i] + 1);
-                }
-                printf("\n");
-            }
-            else
-                printf("-1\n");
-            break;
-
-        default:
-            printf("Invalid combination\n");
-            break;
+            printf("\n");
         }
+        else
+            printf("-1\n");
+        break;
+    case 110: // at & byword
+        if (at > j)
+            printf("-1\n");
+        else if (!at)
+            printf("Invalid Position\n");
+        else
+            printf("%d\n", byWordPosition[at - 1]);
+        break;
+    case 1100: // byword & all
+        if (flag)
+        {
+            for (size_t i = 0; i < j; i++)
+            {
+                if (i)
+                    printf(", %d", byWordPosition[i]);
+                else
+                    printf("%d", byWordPosition[i]);
+            }
+            printf("\n");
+        }
+        else
+            printf("-1\n");
+        break;
+
+    default:
+        printf("Invalid combination\n");
+        break;
     }
     fclose(myFile);
 }
 
-void replace()
+void replace() // wildcard
 {
-    int i = 0, j = 0, state = 0, at;
-    char text[1000], temptext[1000], text_to_find[1000], text_to_replace[1000], *byWordPosition[100], *byCharPosition[100], *stringPtr, number[10], c;
+    int i = 0, j = 0, k = 0, state = 0, byWordPosition[100], byCharPosition[100], end[100], at;
+    char text[1000], temptext[1000], text_to_find[1000], text_to_replace[1000], *stringPtr, number[10];
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
 
@@ -702,7 +782,7 @@ void replace()
         star = true;
     scanf("%s", command); // " --str2" skipped
     modifyArray(text_to_replace, 2);
-    i = 0;
+
     if (c != '\n')
     {
         gets(command);
@@ -722,11 +802,77 @@ void replace()
         if (strstr(command, "-all"))
             state += 10;
     }
+
     j = 0;
 
     fgets(text, 1000, myFile);
+
     if (star)
     {
+        if (text_to_find[0] == '*')
+        {
+            delete_from_array(text_to_find, 0, strlen(text_to_find));
+            for (i = 0; i < strlen(text); i++)
+            {
+                while (strncmp(text_to_find, text + i, strlen(text_to_find)) && i < strlen(text))
+                    i++;
+                if (i < strlen(text))
+                {
+                    i += strlen(text_to_find);
+                    end[j] = i;
+                    while (text[i] != ' ' && text[i] == '\0')
+                        i++;
+
+                    k = end[j] - strlen(text_to_find);
+
+                    while (true)
+                    {
+                        if (text[k - 1] == ' ' || k == 0)
+                            break;
+                        k--;
+                    }
+                    byCharPosition[j] = k;
+                    for (int k = byCharPosition[j]; k > -1; k--)
+                    {
+                        if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                            byWordPosition[j]++;
+                    }
+                    flag = true;
+                    j++;
+                }
+            }
+        }
+
+        else if (text_to_find[strlen(text_to_find) - 1] == '*')
+        {
+            delete_from_array(text_to_find, strlen(text_to_find) - 1, strlen(text_to_find));
+            for (i = 0; i < strlen(text); i++)
+            {
+                if (!strncmp(text_to_find, text + i, strlen(text_to_find)))
+                {
+                    byCharPosition[j] = i;
+
+                    for (int k = byCharPosition[j]; k > -1; k--)
+                    {
+                        if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                            byWordPosition[j]++;
+                    }
+
+                    i = byCharPosition[j] + strlen(text_to_find);
+                    while (text[i] != ' ' && i <= strlen(text) - 1)
+                        i++;
+                    end[j] = i;
+                    flag = true;
+                    j++;
+                }
+            }
+        }
+
+        else
+        {
+            // tokenPtr1 = strtok(text_to_find, '*');
+            // tokenPtr2 = strtok(NULL, '*');
+        }
     }
     else
     {
@@ -735,10 +881,10 @@ void replace()
             if (strstr(text + i, text_to_find))
             {
 
-                byCharPosition[j] = strstr(text + i, text_to_find);
-                byCharPosition[j] = byCharPosition[j] - text;
+                byCharPosition[j] = strstr(text + i, text_to_find) - text;
+                end[j] = byCharPosition[j] + strlen(text_to_find);
 
-                if (byCharPosition[j] - text != 0 && i == 0)
+                if (byCharPosition[j] != 0 && i == 0)
                     i = byCharPosition[j];
 
                 for (int k = byCharPosition[j]; k > -1; k--)
@@ -753,12 +899,13 @@ void replace()
                 flag = true; // founded
             }
         }
+        rewind(myFile);
     }
+    // printf("AFADS");
     rewind(myFile);
-
     switch (state)
     {
-    case 0:
+    case 0: // no options
         if (flag)
         {
             i = 0;
@@ -766,7 +913,7 @@ void replace()
             {
                 if (i == byCharPosition[0])
                     fputs(text_to_replace, myTempFile);
-                if (!((i >= byCharPosition[0]) && (i < byCharPosition[0] + strlen(text_to_find))))
+                if ((i < byCharPosition[0]) || (i >= end[0]))
                     fputc(c, myTempFile);
                 i++;
             }
@@ -774,7 +921,7 @@ void replace()
         else
             printf("-1\n");
         break;
-    case 1:
+    case 1: // at
         if (flag)
         {
             if (at > j || !at)
@@ -787,7 +934,7 @@ void replace()
             {
                 if (i == byCharPosition[at - 1])
                     fputs(text_to_replace, myTempFile);
-                if (!(i >= byCharPosition[at - 1] && i < byCharPosition[at - 1] + strlen(text_to_find)))
+                if ((i < byCharPosition[at - 1] || i >= end[at - 1]))
                     fputc(c, myTempFile);
                 i++;
             }
@@ -795,18 +942,18 @@ void replace()
         else
             printf("-1\n");
         break;
-    case 10:
+    case 10: // all
         if (flag)
         {
             j = 0;
             i = 0;
             while ((c = fgetc(myFile)) != EOF)
             {
-                if (i == byCharPosition[j] + strlen(text_to_find))
+                if (i == end[j])
                     j++;
                 if (i == byCharPosition[j])
                     fputs(text_to_replace, myTempFile);
-                if (!(i >= byCharPosition[j] && i < byCharPosition[j] + strlen(text_to_find)))
+                if ((i < byCharPosition[j] || i >= end[j]))
                     fputc(c, myTempFile);
                 i++;
             }
@@ -818,10 +965,20 @@ void replace()
         printf("Invalid combination\n");
         break;
     }
-    fclose(myTempFile);
-    fclose(myFile);
-    remove(tempFileName);
-    rename(tempFileName2, tempFileName);
+    if (flag)
+    {
+        // printf("TREE");
+        fclose(myTempFile);
+        fclose(myFile);
+        remove(fileName);
+        rename(fileName2, fileName);
+    }
+    else
+    {
+        fclose(myTempFile);
+        fclose(myFile);
+        remove(fileName2);
+    }
 }
 
 void grep()
@@ -894,10 +1051,7 @@ void grep()
             }
         }
         else
-        {
             printf("The file does not exist\n");
-            // return;
-        }
     }
     switch (state)
     {
@@ -957,13 +1111,19 @@ void undo()
     }
     if (!access(address, F_OK))
     {
-        remove(address);
-        SetFileAttributes(tempFileName3, FILE_ATTRIBUTE_NORMAL);
-        rename(tempFileName3, address);
+        while (strncmp(address, undoFileAddress[i], strlen(address)))
+            i++;
+        SetFileAttributes(undoFileAddress[i], FILE_ATTRIBUTE_NORMAL);
+        if (!access(undoFileAddress[i], F_OK))
+        {
+            remove(address);
+            rename(undoFileAddress[i], address);
+        }
+        else
+            printf("faghat yek undo!\n");
     }
     else
         printf("The file does not exist!\n");
-    memset(tempFileName3, 0, sizeof(tempFileName3));
 }
 
 void closing_pairs()
@@ -1050,8 +1210,8 @@ void closing_pairs()
         fputs(text, myTempFile);
         fclose(myFile);
         fclose(myTempFile);
-        remove(tempFileName);
-        rename(tempFileName2, tempFileName);
+        remove(fileName);
+        rename(fileName2, fileName);
     }
 }
 
@@ -1165,6 +1325,10 @@ void compare()
     fclose(myTempFile);
 }
 
-// void tree()
-// {
-// }
+void tree()
+{
+    int depth;
+    scanf("%d", &depth);
+    if (depth < -1)
+        printf("Wrong depth\n");
+}

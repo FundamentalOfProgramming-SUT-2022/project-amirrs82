@@ -595,6 +595,8 @@ void find(bool replace) // wildcard
         state += 1000;
     // 1, 10 ,100 ,1000 , 110, 1100 are possible states
 
+    j = 0;
+    i = 0;
     fgets(text, 1000, myFile);
 
     if (star)
@@ -660,8 +662,138 @@ void find(bool replace) // wildcard
 
         else
         {
-            // tokenPtr1 = strtok(text_to_find, '*');
-            // tokenPtr2 = strtok(NULL, '*');
+            char temp1[1000];
+            char temp2[1000];
+            while (true)
+            {
+                if (text_to_find[i] == '*' && text_to_find[i + 1] == ' ')
+                {
+                    temp1[i] = text_to_find[i];
+                    i++;
+                    break;
+                }
+                if (text_to_find[i] == '*')
+                    break;
+
+                temp1[i] = text_to_find[i];
+                i++;
+            }
+            temp1[i] = '\0';
+
+            j = i;
+
+            while (text_to_find[i] != '\0')
+            {
+                temp2[k] = text_to_find[i];
+                i++;
+                k++;
+            }
+            temp2[k] = '\0';
+
+            if (text_to_find[j - 1] == ' ')
+            {
+                j = 0;
+                k = 0;
+                delete_from_array(temp2, 0, strlen(temp2));
+                for (i = 0; i < strlen(text); i++)
+                {
+                    while (strncmp(temp2, text + i, strlen(temp2)) && i < strlen(text))
+                        i++;
+                    if (i < strlen(text))
+                    {
+                        i += strlen(temp2);
+                        end[j] = i;
+                        while (text[i] != ' ' && text[i] != '\0')
+                            i++;
+
+                        k = end[j] - strlen(temp2);
+
+                        while (true)
+                        {
+                            if (text[k - 1] == ' ' || k == 0)
+                                break;
+                            k--;
+                        }
+                        if (!strncmp(temp1, text + k - strlen(temp1), strlen(temp1)))
+                        {
+                            byCharPosition[j] = k - strlen(temp1);
+                            for (int k = byCharPosition[j]; k > -1; k--)
+                            {
+                                if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                                    byWordPosition[j]++;
+                            }
+                            flag = true;
+                            j++;
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                if (text_to_find[j - 1] == ' ')
+                {
+                    j = 0;
+                    k = 0;
+                    delete_from_array(temp2, 0, strlen(temp2));
+                    for (i = 0; i < strlen(text); i++)
+                    {
+                        while (strncmp(temp2, text + i, strlen(temp2)) && i < strlen(text))
+                            i++;
+                        if (i < strlen(text))
+                        {
+                            i += strlen(temp2);
+                            end[j] = i;
+                            while (text[i] != ' ' && text[i] != '\0')
+                                i++;
+
+                            k = end[j] - strlen(temp2);
+
+                            while (true)
+                            {
+                                if (text[k - 1] == ' ' || k == 0)
+                                    break;
+                                k--;
+                            }
+                            if (!strncmp(temp1, text + k - strlen(temp1), strlen(temp1)))
+                            {
+                                byCharPosition[j] = k - strlen(temp1);
+                                flag = true;
+                                j++;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    j = 0;
+                    delete_from_array(temp1, strlen(temp1) - 1, strlen(temp1));
+                    for (i = 0; i < strlen(text); i++)
+                    {
+                        if (!strncmp(temp1, text + i, strlen(temp1)))
+                        {
+                            byCharPosition[j] = i;
+
+                            for (int k = byCharPosition[j]; k > -1; k--)
+                            {
+                                if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                                    byWordPosition[j]++;
+                            }
+
+                            i = byCharPosition[j] + strlen(temp1);
+                            while (text[i] != ' ' && i <= strlen(text) - 1)
+                                i++;
+                            if (!strncmp(text + i, temp2, strlen(temp2)))
+                            {
+                                i += strlen(temp2);
+                                end[j] = i;
+                                flag = true;
+                                j++;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     else
@@ -689,7 +821,6 @@ void find(bool replace) // wildcard
                 flag = true; // founded
             }
         }
-        rewind(myFile);
     }
 
     switch (state)
@@ -832,11 +963,7 @@ void replace() // wildcard
                         k--;
                     }
                     byCharPosition[j] = k;
-                    for (int k = byCharPosition[j]; k > -1; k--)
-                    {
-                        if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
-                            byWordPosition[j]++;
-                    }
+
                     flag = true;
                     j++;
                 }
@@ -852,12 +979,6 @@ void replace() // wildcard
                 {
                     byCharPosition[j] = i;
 
-                    for (int k = byCharPosition[j]; k > -1; k--)
-                    {
-                        if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
-                            byWordPosition[j]++;
-                    }
-
                     i = byCharPosition[j] + strlen(text_to_find);
                     while (text[i] != ' ' && i <= strlen(text) - 1)
                         i++;
@@ -870,8 +991,138 @@ void replace() // wildcard
 
         else
         {
-            // tokenPtr1 = strtok(text_to_find, '*');
-            // tokenPtr2 = strtok(NULL, '*');
+            char temp1[1000];
+            char temp2[1000];
+            while (true)
+            {
+                if (text_to_find[i] == '*' && text_to_find[i + 1] == ' ')
+                {
+                    temp1[i] = text_to_find[i];
+                    i++;
+                    break;
+                }
+                if (text_to_find[i] == '*')
+                    break;
+
+                temp1[i] = text_to_find[i];
+                i++;
+            }
+            temp1[i] = '\0';
+
+            j = i;
+
+            while (text_to_find[i] != '\0')
+            {
+                temp2[k] = text_to_find[i];
+                i++;
+                k++;
+            }
+            temp2[k] = '\0';
+
+            if (text_to_find[j - 1] == ' ')
+            {
+                j = 0;
+                k = 0;
+                delete_from_array(temp2, 0, strlen(temp2));
+                for (i = 0; i < strlen(text); i++)
+                {
+                    while (strncmp(temp2, text + i, strlen(temp2)) && i < strlen(text))
+                        i++;
+                    if (i < strlen(text))
+                    {
+                        i += strlen(temp2);
+                        end[j] = i;
+                        while (text[i] != ' ' && text[i] != '\0')
+                            i++;
+
+                        k = end[j] - strlen(temp2);
+
+                        while (true)
+                        {
+                            if (text[k - 1] == ' ' || k == 0)
+                                break;
+                            k--;
+                        }
+                        if (!strncmp(temp1, text + k - strlen(temp1), strlen(temp1)))
+                        {
+                            byCharPosition[j] = k - strlen(temp1);
+                            for (int k = byCharPosition[j]; k > -1; k--)
+                            {
+                                if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                                    byWordPosition[j]++;
+                            }
+                            flag = true;
+                            j++;
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                if (text_to_find[j - 1] == ' ')
+                {
+                    j = 0;
+                    k = 0;
+                    delete_from_array(temp2, 0, strlen(temp2));
+                    for (i = 0; i < strlen(text); i++)
+                    {
+                        while (strncmp(temp2, text + i, strlen(temp2)) && i < strlen(text))
+                            i++;
+                        if (i < strlen(text))
+                        {
+                            i += strlen(temp2);
+                            end[j] = i;
+                            while (text[i] != ' ' && text[i] != '\0')
+                                i++;
+
+                            k = end[j] - strlen(temp2);
+
+                            while (true)
+                            {
+                                if (text[k - 1] == ' ' || k == 0)
+                                    break;
+                                k--;
+                            }
+                            if (!strncmp(temp1, text + k - strlen(temp1), strlen(temp1)))
+                            {
+                                byCharPosition[j] = k - strlen(temp1);
+                                flag = true;
+                                j++;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    j = 0;
+                    delete_from_array(temp1, strlen(temp1) - 1, strlen(temp1));
+                    for (i = 0; i < strlen(text); i++)
+                    {
+                        if (!strncmp(temp1, text + i, strlen(temp1)))
+                        {
+                            byCharPosition[j] = i;
+
+                            for (int k = byCharPosition[j]; k > -1; k--)
+                            {
+                                if ((text[k] == ' ' && text[k - 1] != ' ') || k == 0)
+                                    byWordPosition[j]++;
+                            }
+
+                            i = byCharPosition[j] + strlen(temp1);
+                            while (text[i] != ' ' && i <= strlen(text) - 1)
+                                i++;
+                            if (!strncmp(text + i, temp2, strlen(temp2)))
+                            {
+                                i += strlen(temp2);
+                                end[j] = i;
+                                flag = true;
+                                j++;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     else
@@ -901,7 +1152,6 @@ void replace() // wildcard
         }
         rewind(myFile);
     }
-    // printf("AFADS");
     rewind(myFile);
     switch (state)
     {
@@ -967,7 +1217,6 @@ void replace() // wildcard
     }
     if (flag)
     {
-        // printf("TREE");
         fclose(myTempFile);
         fclose(myFile);
         remove(fileName);

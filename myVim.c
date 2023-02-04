@@ -9,9 +9,11 @@
 #include <string.h>
 #include <windows.h>
 #include <dirent.h>
+#define MAX_SIZE 1000
+#define SIZE 100
 
-char address[100], command[1000], clipboard[1000], undoFileAddress[100][100], fileName[100], fileName2[100], armanText[100][1000], c;
-FILE *myFile, *myTempFile, *undoFile[100];
+char address[SIZE], command[MAX_SIZE], clipboard[MAX_SIZE], undoFileAddress[SIZE][SIZE], fileName[SIZE], fileName2[SIZE], armanText[SIZE][MAX_SIZE], c;
+FILE *myFile, *myTempFile, *undoFile[SIZE];
 int undoFileCounter = 0, armanCounter = 0;
 bool arman = false;
 
@@ -28,7 +30,7 @@ void grep(bool arman);
 void undo();
 void closing_pairs();
 void compare();
-void tree();
+void tree(char *, int, int);
 void armanInput();
 int modifyArray(char arr[], int n);
 void insert_to_array(char arr[], char c, int position, int size);
@@ -74,7 +76,24 @@ int main()
         else if (!strcmp(command, "compare"))
             compare();
         else if (!strcmp(command, "tree"))
-            tree();
+        {
+            int depth;
+            scanf("%d", &depth);
+            if (depth < -1)
+            {
+                printf("Wrong depth\n");
+                gets(command);
+                scanf("%s", command);
+                continue;
+            }
+            if ((c = getchar()) != '\n')
+            {
+                getchar();
+                getchar();
+                arman = true;
+            }
+            tree("../root", 0, depth);
+        }
         else
         {
             printf("Wrong Command! Please try again\n");
@@ -169,14 +188,14 @@ void delete_from_array(char arr[], int position, int size)
 
 void undoBackup()
 {
-    char text[1000];
+    char text[MAX_SIZE];
     strcpy(undoFileAddress[undoFileCounter], address);
     strcat(undoFileAddress[undoFileCounter], "____undo.txt");
     remove(undoFileAddress[undoFileCounter]);
     undoFile[undoFileCounter] = fopen(undoFileAddress[undoFileCounter], "w");
     while (true)
     {
-        fgets(text, 1000, myFile);
+        fgets(text, MAX_SIZE, myFile);
         fputs(text, undoFile[undoFileCounter]);
         if (feof(myFile))
             break;
@@ -245,7 +264,7 @@ int openFile(int n, char *mode)
 void createFile()
 {
     FILE *myFile;
-    char tempAddress[100];
+    char tempAddress[SIZE];
     int i;
     scanf("%s", command); // " --file skipped"
     getchar();            // space skipped
@@ -291,7 +310,7 @@ void createFile()
 void insert(bool arman)
 {
     int line, position, i = 0, j = 0, currentLine = 1;
-    char text[1000], buffText[1000];
+    char text[MAX_SIZE], buffText[MAX_SIZE];
     memset(text, 0, sizeof(text));
     memset(text, 0, sizeof(buffText));
     scanf("%s", command); // " --file" skipped
@@ -319,7 +338,7 @@ void insert(bool arman)
 
     while (true)
     {
-        fgets(buffText, 1000, myFile);
+        fgets(buffText, MAX_SIZE, myFile);
         if (line == currentLine)
         {
             for (size_t i = 0; i < strlen(buffText); i++)
@@ -347,7 +366,7 @@ void insert(bool arman)
 
 void cat()
 {
-    char text[1000];
+    char text[MAX_SIZE];
     int i = 0;
     scanf("%s", command); // --file skipped
 
@@ -361,7 +380,7 @@ void cat()
     }
     while (true)
     {
-        fgets(text, 1000, myFile);
+        fgets(text, MAX_SIZE, myFile);
         sprintf(armanText[armanCounter], "%s", text);
         armanCounter++;
         if (feof(myFile))
@@ -380,7 +399,7 @@ void cat()
 
 void remove_()
 {
-    char text[1000], c;
+    char text[MAX_SIZE], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
     scanf("%s", command); // " --file" skipped
     if (!openFile(2, "w+"))
@@ -434,7 +453,7 @@ void remove_()
 
 void copy()
 {
-    char text[1000], c;
+    char text[MAX_SIZE], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
     scanf("%s", command); // "--file" skipped
     if (!openFile(1, "r"))
@@ -476,7 +495,7 @@ void copy()
 
 void cut()
 {
-    char text[1000], c;
+    char text[MAX_SIZE], c;
     int line, position, length, j = 0, i = 0, exactPosition = 0, currentLine = 1, flag = 1;
     scanf("%s", command); //--file skipped
     if (!openFile(2, "w+"))
@@ -539,7 +558,7 @@ void cut()
 void paste()
 {
     int line, position, i = 0, j = 0, currentLine = 1;
-    char text[1000], c;
+    char text[MAX_SIZE], c;
     scanf("%s", command); //--file skipped
 
     if (!openFile(2, "w+"))
@@ -551,7 +570,7 @@ void paste()
 
     while (true)
     {
-        fgets(text, 1000, myFile);
+        fgets(text, MAX_SIZE, myFile);
         if (line == currentLine)
         {
             for (size_t i = 0; i < strlen(text); i++)
@@ -579,8 +598,8 @@ void paste()
 
 void find(bool arman)
 {
-    int i = 0, j = 0, k = 0, state = 0, byWordPosition[100], byCharPosition[100], end[100], at;
-    char text[1000], text_to_find[1000], number[10], *stringPtr, *tokenPtr1, *tokenPtr2;
+    int i = 0, j = 0, k = 0, state = 0, byWordPosition[SIZE], byCharPosition[SIZE], end[SIZE], at;
+    char text[MAX_SIZE], text_to_find[MAX_SIZE], number[10], *stringPtr, *tokenPtr1, *tokenPtr2;
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
     memset(byCharPosition, 0, sizeof(byCharPosition));
@@ -626,10 +645,10 @@ void find(bool arman)
         }
         c = getchar();
     }
-    // 1, 10 ,100 ,1000 , 110, 1100 are possible states
+    // 1, 10 ,SIZE ,MAX_SIZE , 110, 1SIZE are possible states
     j = 0;
     i = 0;
-    fgets(text, 1000, myFile);
+    fgets(text, MAX_SIZE, myFile);
 
     if (star)
     {
@@ -694,8 +713,8 @@ void find(bool arman)
 
         else
         {
-            char temp1[1000];
-            char temp2[1000];
+            char temp1[MAX_SIZE];
+            char temp2[MAX_SIZE];
             while (true)
             {
                 if (text_to_find[i] == '*' && text_to_find[i + 1] == ' ')
@@ -905,8 +924,8 @@ void find(bool arman)
 
 void replace(bool arman)
 {
-    int i = 0, j = 0, k = 0, state = 0, byWordPosition[100], byCharPosition[100], end[100], at;
-    char text[1000], temptext[1000], text_to_find[1000], text_to_replace[1000], *stringPtr, number[10];
+    int i = 0, j = 0, k = 0, state = 0, byWordPosition[SIZE], byCharPosition[SIZE], end[SIZE], at;
+    char text[MAX_SIZE], temptext[MAX_SIZE], text_to_find[MAX_SIZE], text_to_replace[MAX_SIZE], *stringPtr, number[10];
     bool star = false, flag = false;
     memset(byWordPosition, 0, sizeof(byWordPosition));
 
@@ -955,7 +974,7 @@ void replace(bool arman)
 
     j = 0;
 
-    fgets(text, 1000, myFile);
+    fgets(text, MAX_SIZE, myFile);
 
     if (star)
     {
@@ -1010,8 +1029,8 @@ void replace(bool arman)
 
         else
         {
-            char temp1[1000];
-            char temp2[1000];
+            char temp1[MAX_SIZE];
+            char temp2[MAX_SIZE];
             while (true)
             {
                 if (text_to_find[i] == '*' && text_to_find[i + 1] == ' ')
@@ -1193,7 +1212,7 @@ void replace(bool arman)
 void grep(bool arman)
 {
     int i = 0, j = 0, state = 0, at;
-    char text[1000], text_to_find[1000], fileName[100][1000], foundedText[100][1000], c, tempC;
+    char text[MAX_SIZE], text_to_find[MAX_SIZE], fileName[SIZE][MAX_SIZE], foundedText[SIZE][MAX_SIZE], c, tempC;
     bool flag = false;
     scanf("%s", command); // --str or option skipped
 
@@ -1262,7 +1281,7 @@ void grep(bool arman)
             myFile = fopen(address, "r");
             while (true)
             {
-                fgets(text, 1000, myFile);
+                fgets(text, MAX_SIZE, myFile);
                 printf("%s\n", text);
                 if (strstr(text, text_to_find))
                 {
@@ -1373,14 +1392,14 @@ void undo()
 
 void closing_pairs()
 {
-    char text[1000];
+    char text[MAX_SIZE];
     int i = 0, j = 0, k = 0, tabCounter = 0, spaceCounter;
     bool flag = false, emptyContent;
     if (!openFile(2, "w+"))
         return;
     undoBackup();
 
-    fgets(text, 1000, myFile);
+    fgets(text, MAX_SIZE, myFile);
 
     for (size_t i = 0; i < strlen(text); i++) // delete all whitspaces
     {
@@ -1462,9 +1481,9 @@ void closing_pairs()
 
 void compare()
 {
-    char text1[100][1000], text2[100][1000], text[1000];
+    char text1[SIZE][MAX_SIZE], text2[SIZE][MAX_SIZE], text[MAX_SIZE];
     int i = 1, end1, end2, state, file_1_line = 0, file_2_line;
-    bool different[100] = {false};
+    bool different[SIZE] = {false};
 
     if (!openFile(1, "r"))
         return;
@@ -1480,8 +1499,8 @@ void compare()
     }
     while (true)
     {
-        fgets(text1[i], 1000, myFile);
-        fgets(text2[i], 1000, myTempFile);
+        fgets(text1[i], MAX_SIZE, myFile);
+        fgets(text2[i], MAX_SIZE, myTempFile);
         if (strcmp(text1[i], text2[i]))
             different[i] = true;
         i++;
@@ -1534,7 +1553,7 @@ void compare()
 
         while (true)
         {
-            fgets(text1[i++], 1000, myFile);
+            fgets(text1[i++], MAX_SIZE, myFile);
             if (feof(myFile))
                 break;
         }
@@ -1562,7 +1581,7 @@ void compare()
 
         while (true)
         {
-            fgets(text2[i++], 1000, myTempFile);
+            fgets(text2[i++], MAX_SIZE, myTempFile);
             if (feof(myTempFile))
                 break;
         }
@@ -1592,13 +1611,49 @@ void compare()
     }
 }
 
-void tree() // arman
+void tree(char *basePath, int currentDepth, int depth) // arman
 {
-    int depth;
-    scanf("%d", &depth);
-    if (depth < -1)
-        printf("Wrong depth\n");
-    printf("%c", 195);
+    char next_path[MAX_SIZE], c, text[MAX_SIZE];
+    memset(next_path, 0, MAX_SIZE);
+
+    struct dirent *current_object;
+    DIR *folder = opendir(basePath);
+
+    if (!folder || currentDepth == depth)
+        return;
+
+    while ((current_object = readdir(folder)) != NULL)
+    {
+        if (strcmp(current_object->d_name, ".") && strcmp(current_object->d_name, ".."))
+        {
+
+            for (int i = 0; i < 2 * currentDepth; i++)
+            {
+                if (i % 2 == 0)
+                    sprintf(armanText[armanCounter], "%c", 179);
+                else
+                    sprintf(armanText[armanCounter], " ");
+            }
+
+            sprintf(armanText[armanCounter], "%c%c%c %s\n", 195, 196, 196, current_object->d_name);
+
+            strcpy(next_path, basePath);
+            strcat(next_path, "/");
+            strcat(next_path, current_object->d_name);
+            armanCounter++;
+            tree(next_path, currentDepth + 1, depth);
+        }
+    }
+
+    if (arman)
+        armanInput();
+    else
+    {
+        for (size_t i = 0; i < armanCounter; i++)
+            printf("%s", armanText[i]);
+    }
+
+    closedir(folder);
 }
 
 void armanInput()

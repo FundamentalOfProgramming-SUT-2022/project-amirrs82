@@ -1613,7 +1613,7 @@ void compare()
 
 void tree(char *basePath, int currentDepth, int depth) // arman
 {
-    char next_path[MAX_SIZE], c, text[MAX_SIZE];
+    char next_path[MAX_SIZE], c, text[MAX_SIZE], tempPath[MAX_SIZE];
     memset(next_path, 0, MAX_SIZE);
 
     struct dirent *current_object;
@@ -1624,24 +1624,30 @@ void tree(char *basePath, int currentDepth, int depth) // arman
 
     while ((current_object = readdir(folder)) != NULL)
     {
-        if (strcmp(current_object->d_name, ".") && strcmp(current_object->d_name, ".."))
+        strcpy(tempPath, basePath);
+        strcat(tempPath, "/");
+        strcat(tempPath, current_object->d_name);
+        if (GetFileAttributesA(tempPath) != FILE_ATTRIBUTE_HIDDEN)
         {
-
-            for (int i = 0; i < 2 * currentDepth; i++)
+            if (strcmp(current_object->d_name, ".") && strcmp(current_object->d_name, ".."))
             {
-                if (i % 2 == 0)
-                    sprintf(armanText[armanCounter], "%c", 179);
-                else
-                    sprintf(armanText[armanCounter], " ");
+
+                for (int i = 0; i < 2 * currentDepth; i++)
+                {
+                    if (i % 2 == 0)
+                        sprintf(armanText[armanCounter], "%c", 179);
+                    else
+                        sprintf(armanText[armanCounter], " ");
+                }
+
+                sprintf(armanText[armanCounter], "%c%c%c %s\n", 195, 196, 196, current_object->d_name);
+
+                strcpy(next_path, basePath);
+                strcat(next_path, "/");
+                strcat(next_path, current_object->d_name);
+                armanCounter++;
+                tree(next_path, currentDepth + 1, depth);
             }
-
-            sprintf(armanText[armanCounter], "%c%c%c %s\n", 195, 196, 196, current_object->d_name);
-
-            strcpy(next_path, basePath);
-            strcat(next_path, "/");
-            strcat(next_path, current_object->d_name);
-            armanCounter++;
-            tree(next_path, currentDepth + 1, depth);
         }
     }
 
